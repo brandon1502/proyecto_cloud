@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ver Proyecto - Orquestador Privado</title>
+  <link rel="stylesheet" href="https://unpkg.com/vis-network/styles/vis-network.min.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;background:linear-gradient(135deg,#f0f4f8 0%,#e8eef5 100%);display:flex;min-height:100vh}
+    .sidebar{width:280px;background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);color:#4a5568;display:flex;flex-direction:column;box-shadow:4px 0 20px rgba(100,116,139,.1);position:fixed;height:100vh;left:0;top:0;transition:all .3s ease;border-right:1px solid #e2e8f0}
+    .sidebar.collapsed{width:80px}
+    .sidebar.collapsed .sidebar-header h2 span,.sidebar.collapsed .menu-item span{display:none}
+    .sidebar.collapsed .sidebar-header{padding:30px 20px}
+    .sidebar-header{padding:30px 25px;border-bottom:1px solid #e2e8f0;position:relative}
+    .toggle-btn{position:absolute;top:35px;right:-15px;width:30px;height:30px;background:linear-gradient(135deg,#7dd3fc 0%,#60a5fa 100%);border:none;border-radius:50%;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(96,165,250,.3);transition:all .3s ease;z-index:10}
+    .toggle-btn:hover{background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%);transform:scale(1.1)}
+    .sidebar-header h2{font-size:20px;font-weight:600;display:flex;align-items:center;gap:12px;color:#1e293b}
+    .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#7dd3fc 0%,#60a5fa 100%);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .sidebar-menu{flex:1;padding:20px 0;overflow-y:auto}
+    .menu-item{padding:15px 25px;display:flex;align-items:center;gap:15px;color:#64748b;text-decoration:none;transition:all .3s ease;cursor:pointer;border-left:4px solid transparent;font-weight:500}
+    .menu-item:hover{background:#f1f5f9;color:#3b82f6;border-left-color:#60a5fa}
+    .menu-item.active{background:linear-gradient(90deg,rgba(125,211,252,.15) 0%,rgba(96,165,250,.05) 100%);color:#3b82f6;border-left-color:#60a5fa}
+    .menu-icon{font-size:20px;width:24px;text-align:center}
+    .sidebar-footer{border-top:1px solid #e2e8f0;padding:20px 0}
+    .divider{height:1px;background:#e2e8f0;margin:10px 25px}
+    .main-content{flex:1;margin-left:280px;padding:40px;transition:margin-left .3s ease;display:flex;flex-direction:column;height:100vh}
+    .main-content.expanded{margin-left:80px}
+    .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .project-title{display:flex;flex-direction:column;gap:5px}
+    .project-title h1{color:#1e293b;font-size:24px;font-weight:600}
+    .project-title p{color:#64748b;font-size:14px}
+    .toolbar{display:flex;gap:8px}
+    .btn-tool{padding:0;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;transition:all .3s ease;width:40px;height:40px;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 2px 5px rgba(100,116,139,.08)}
+    .btn-tool:hover{background:#f8fafc;border-color:#cbd5e1;transform:translateY(-2px);box-shadow:0 4px 10px rgba(100,116,139,.12)}
+    .btn-tool .icon{font-size:18px;line-height:1}
+    .btn-tool .tooltip{position:absolute;bottom:-35px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:100}
+    .btn-tool .tooltip::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid #1e293b}
+    .btn-tool:hover .tooltip{opacity:1}
+    .topology-container{flex:1;background:#fff;border-radius:15px;box-shadow:0 2px 15px rgba(100,116,139,.08);border:1px solid #e2e8f0;overflow:hidden;display:flex;flex-direction:column;position:relative}
+    #mynetwork{flex:1;width:100%}
+    .zoom-controls{position:absolute;bottom:30px;right:30px;display:flex;flex-direction:column;gap:8px;background:#fff;border-radius:10px;padding:8px;box-shadow:0 4px 15px rgba(100,116,139,.15);border:1px solid #e2e8f0}
+    .zoom-btn{width:36px;height:36px;border:none;background:#fff;color:#475569;font-size:20px;cursor:pointer;border-radius:6px;transition:all .2s ease;display:flex;align-items:center;justify-content:center}
+    .zoom-btn:hover{background:#f1f5f9;color:#1e293b}
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>
+        <div class="logo-icon">🔐</div>
+        <span>Orquestador</span>
+      </h2>
+      <button class="toggle-btn" id="toggleSidebar">◀</button>
+    </div>
+
+    <nav class="sidebar-menu">
+      <a href="/home" class="menu-item" id="inicioLink">
+        <span class="menu-icon">🏠</span>
+        <span>Inicio</span>
+      </a>
+      <a href="/projects" class="menu-item active" id="proyectosLink">
+        <span class="menu-icon">📁</span>
+        <span>Proyectos</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="divider"></div>
+      <a href="#" class="menu-item" id="changePasswordLink">
+        <span class="menu-icon">🔑</span>
+        <span>Cambiar Contraseña</span>
+      </a>
+      <a href="/auth/logout" class="menu-item" id="logoutLink">
+        <span class="menu-icon">🚪</span>
+        <span>Cerrar Sesión</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="page-header">
+      <div class="project-title">
+        <h1 id="projectTitle">Ver Proyecto</h1>
+        <p>Doble click en un nodo para ver su información, click derecho para ver otras acciones</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn-tool" id="downloadBtn"><span class="icon">💾</span><span class="tooltip">Descargar</span></button>
+        <button class="btn-tool" id="deleteBtn"><span class="icon">🗑️</span><span class="tooltip">Eliminar</span></button>
+        <button class="btn-tool" id="playBtn"><span class="icon">▶️</span><span class="tooltip">Iniciar</span></button>
+        <button class="btn-tool" id="stopBtn"><span class="icon">⏹️</span><span class="tooltip">Detener</span></button>
+        <button class="btn-tool" id="refreshBtn"><span class="icon">🔄</span><span class="tooltip">Actualizar</span></button>
+        <button class="btn-tool" id="viewBtn"><span class="icon">👁️</span><span class="tooltip">Vista</span></button>
+        <button class="btn-tool" id="consoleBtn"><span class="icon">💻</span><span class="tooltip">Consola</span></button>
+        <button class="btn-tool" id="printBtn"><span class="icon">🖨️</span><span class="tooltip">Imprimir</span></button>
+      </div>
+    </div>
+
+    <div class="topology-container">
+      <div id="mynetwork"></div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomInBtn">+</button>
+        <button class="zoom-btn" id="zoomOutBtn">−</button>
+        <button class="zoom-btn" id="fitBtn">⊡</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script>
+    // Helpers
+    const projectId = window.location.pathname.split('/').pop(); // /projects/123 → "123"
+
+    // Título dinámico (si quieres poner el nombre real, puedes rellenarlo desde tu backend con Jinja)
+    document.getElementById('projectTitle').textContent = `Ver Proyecto: ${projectId}`;
+
+    // Toggle sidebar
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      mainContent.classList.toggle('expanded');
+      toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+    });
+
+    // Acciones toolbar → API (usa cookies JWT; por eso credentials: 'include')
+    async function callApi(path, opts = {}) {
+      const res = await fetch(path, { credentials: 'include', ...opts });
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return null;
+      }
+      return res;
+    }
+
+    document.getElementById('downloadBtn').addEventListener('click', async () => {
+      const res = await callApi(`/api/projects/${projectId}/download`);
+      if (!res) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proyecto_${projectId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      if (!confirm('¿Estás seguro de eliminar esta topología?')) return;
+      const res = await callApi(`/api/projects/${projectId}`, { method: 'DELETE' });
+      if (!res) return;
+      if (res.ok) window.location.href = '/projects';
+      else alert('No se pudo eliminar');
+    });
+
+    document.getElementById('playBtn').addEventListener('click', async () => {
+      const res = await callApi(`/api/projects/${projectId}/start`, { method: 'POST' });
+      if (!res) return;
+      alert(res.ok ? 'Topología iniciada' : 'No se pudo iniciar');
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', async () => {
+      const res = await callApi(`/api/projects/${projectId}/stop`, { method: 'POST' });
+      if (!res) return;
+      alert(res.ok ? 'Topología detenida' : 'No se pudo detener');
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      // ejemplo: pedir estado y refrescar (aquí sólo recargamos la página)
+      window.location.reload();
+    });
+
+    document.getElementById('viewBtn').addEventListener('click', () => {
+      // Cambiar de vista (placeholder)
+      alert('Cambiar vista (implementa según tu UI)');
+    });
+
+    document.getElementById('consoleBtn').addEventListener('click', () => {
+      // Abre consola del proyecto/nodo (ajusta a tu endpoint real)
+      window.open(`/projects/${projectId}/console`, '_blank');
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+    // ---------------- vis-network (la topología de demo se queda igual) ----------------
+    const nodes = new vis.DataSet([
+      { id: 1, label: 'server1', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 2, label: 'server2', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 3, label: 'server3', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 4, label: 'server4', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 5, label: 'gateway', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48Y2lyY2xlIGN4PSIyNSIgY3k9IjI1IiByPSIyNSIgZmlsbD0iIzYwYTVmYSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+RzwvdGV4dD48L3N2Zz4=' },
+      { id: 6, label: 'ofs', shape: 'box', color: { background: '#7dd3fc', border: '#60a5fa' } }
+    ]);
+
+    const edges = new vis.DataSet([
+      { from: 5, to: 1, label: 'Enlace 6' },
+      { from: 5, to: 6, label: 'Enlace 7' },
+      { from: 6, to: 2, label: 'Enlace 8' },
+      { from: 6, to: 3, label: 'Enlace 9' },
+      { from: 6, to: 4, label: 'Enlace 10' }
+    ]);
+
+    const container = document.getElementById('mynetwork');
+    const data = { nodes, edges };
+    const options = {
+      interaction:{ hover:true, navigationButtons:false, keyboard:true },
+      physics:{ enabled:true, stabilization:{ iterations:100 } },
+      nodes:{ font:{ size:14, color:'#1e293b' } },
+      edges:{
+        font:{ size:12, color:'#64748b', align:'middle' },
+        color:{ color:'#cbd5e1', highlight:'#60a5fa', hover:'#60a5fa' },
+        smooth:{ type:'continuous' }
+      }
+    };
+    const network = new vis.Network(container, data, options);
+
+    // Zoom controls
+    document.getElementById('zoomInBtn').addEventListener('click', () => {
+      const scale = network.getScale(); network.moveTo({ scale: scale * 1.2 });
+    });
+    document.getElementById('zoomOutBtn').addEventListener('click', () => {
+      const scale = network.getScale(); network.moveTo({ scale: scale * 0.8 });
+    });
+    document.getElementById('fitBtn').addEventListener('click', () => network.fit());
+
+    // Doble click → info nodo
+    network.on('doubleClick', (params) => {
+      if (params.nodes.length > 0) {
+        const nodeId = params.nodes[0];
+        const node = nodes.get(nodeId);
+        alert(`Información del nodo: ${node.label}\nID: ${nodeId}`);
+      }
+    });
+  </script>
+</body>
+</html>

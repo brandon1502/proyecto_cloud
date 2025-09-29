@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    container_name: orchestrator_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      # Variables que puede usar tu app (puedes moverlas a un .env)
+      JWT_SECRET: "devsupersecret-change-me"
+      COOKIE_SECURE: "0"       # 1 en producción con HTTPS
+      COOKIE_SAMESITE: "lax"
+    volumes:
+      - ./app:/app/app   # en desarrollo: monta tu código para autoreload
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
