@@ -640,7 +640,7 @@
             <button class="btn btn-secondary" onclick="window.location.href='/plantillas'">← Volver</button>
         </div>
         <div class="footer-right">
-            <button class="btn btn-primary" onclick="exportTopology()">💾 Guardar Topología</button>
+            <button class="btn btn-primary" onclick="exportTopology()">Guardar Topología</button>
         </div>
     </footer>
 
@@ -778,6 +778,18 @@ document.getElementById('vm-internet').addEventListener('change', function() {
         let currentTemplateType = null; // Tipo de plantilla actual
         let selectedNodeId = null; // ID del nodo seleccionado para configurar
         let vmConfigs = {}; // Configuraciones de cada VM
+        const PC_IMAGE = '/static/images/pc.png';
+
+function randomXY() {
+  const c = document.getElementById('topology-canvas');
+  const w = (c?.clientWidth || 1000);
+  const h = (c?.clientHeight || 600);
+  // Vis.js usa 0,0 en el centro. Espacio reducido para no ir a bordes.
+  const x = (Math.random() - 0.5) * w * 0.8;
+  const y = (Math.random() - 0.5) * h * 0.8;
+  return { x, y };
+}
+
 
         // ============================================
         // INICIALIZACIÓN
@@ -793,83 +805,72 @@ document.getElementById('vm-internet').addEventListener('change', function() {
          * Inicializa la red de vis.js
          */
         function initNetwork() {
-            const container = document.getElementById('topology-canvas');
-            
-            // Crear DataSets para nodos y aristas
-            nodes = new vis.DataSet([]);
-            edges = new vis.DataSet([]);
-            
-            const data = { nodes, edges };
-            
-            // Opciones de configuración de vis.js
-            const PC_IMAGE = '/static/images/pc.png';
-            
-            const options = {
-                nodes: {
-                    shape: 'image',
-                    image: PC_IMAGE,
-                    size: 40,
-                    font: {
-                        size: 14,
-                        color: '#1e293b',
-                        face: 'Segoe UI',
-                        background: 'rgba(255, 255, 255, 0.8)',
-                        strokeWidth: 0
-                    },
-                    borderWidth: 2,
-                    borderWidthSelected: 3,
-                    chosen: {
-                        node: function(values, id, selected, hovering) {
-                            values.borderWidth = 3;
-                            values.borderColor = '#3b82f6';
-                        }
-                    }
-                },
-                edges: {
-                    color: {
-                        color: '#94a3b8',
-                        highlight: '#60a5fa'
-                    },
-                    width: 2,
-                    smooth: {
-                        type: 'continuous'
-                    }
-                },
-                physics: {
-                    enabled: true,
-                    stabilization: {
-                        iterations: 100
-                    },
-                    barnesHut: {
-                        gravitationalConstant: -2000,
-                        springConstant: 0.001,
-                        springLength: 200
-                    }
-                },
-                interaction: {
-                    hover: true,
-                    tooltipDelay: 200
-                }
-            };
-            
-            // Crear la red
-            network = new vis.Network(container, data, options);
-            
-            // Event listener para click en nodos
-            network.on('click', function(params) {
-                if (params.nodes.length > 0) {
-                    const nodeId = params.nodes[0];
-                    
-                    // Si estamos en modo conexión
-                    if (connectionMode) {
-                        handleConnectionClick(nodeId);
-                    } else {
-                        // Abrir modal de configuración
-                        openVMConfigModal(nodeId);
-                    }
-                }
-            });
+  const container = document.getElementById('topology-canvas');
+
+  // DataSets
+  nodes = new vis.DataSet([]);
+  edges = new vis.DataSet([]);
+  const data = { nodes, edges };
+
+  const options = {
+    nodes: {
+      shape: 'image',
+      image: PC_IMAGE,
+      size: 40,
+      font: {
+        size: 14,
+        color: '#1e293b',
+        face: 'Segoe UI',
+        background: 'rgba(255, 255, 255, 0.8)',
+        strokeWidth: 0
+      },
+      borderWidth: 2,
+      borderWidthSelected: 3,
+      chosen: {
+        node: function(values) {
+          values.borderWidth = 3;
+          values.borderColor = '#3b82f6';
         }
+      }
+    },
+    edges: {
+      color: { color: '#94a3b8', highlight: '#60a5fa' },
+      width: 2,
+      smooth: { type: 'continuous' }
+    },
+    physics: {
+      enabled: true,
+      stabilization: { iterations: 150 },
+      barnesHut: {
+        gravitationalConstant: -2500,
+        springConstant: 0.02,
+        springLength: 180
+      }
+    },
+    interaction: {
+      hover: true,
+      dragNodes: true,
+      tooltipDelay: 150
+    }
+  };
+
+  network = new vis.Network(container, data, options);
+
+  // Click en nodos
+  network.on('click', function(params) {
+    if (params.nodes.length > 0) {
+      const nodeId = params.nodes[0];
+      if (connectionMode) {
+        handleConnectionClick(nodeId);
+      } else {
+        openVMConfigModal(nodeId);
+      }
+    }
+  });
+
+  // Estabiliza al iniciar para evitar amontonamiento
+  network.stabilize(150);
+}
 
         // ============================================
         // AGREGAR VMs MANUALMENTE
@@ -878,33 +879,40 @@ document.getElementById('vm-internet').addEventListener('change', function() {
          * Agrega VMs manualmente según la cantidad especificada
          */
         function addManualVMs() {
-            const count = parseInt(document.getElementById('vm-count').value) || 1;
-            
-            for (let i = 0; i < count; i++) {
-                vmCounter++;
-                const nodeId = `vm-${vmCounter}`;
-                const label = `VM-${String(vmCounter).padStart(3, '0')}`;
-                
-                // Crear nodo
-                nodes.add({
-                    id: nodeId,
-                    label: label,
-                    title: `${label}\nClick para configurar`
-                });
-                
-                // Configuración por defecto
-                vmConfigs[nodeId] = {
-                    name: label,
-                    ram: 4,
-                    cpu: 2,
-                    disk: 20,
-                    cores: 1,
-                    os: 'Ubuntu'
-                };
-            }
-            
-            updateStats();
-        }
+  const count = parseInt(document.getElementById('vm-count').value) || 1;
+
+  for (let i = 0; i < count; i++) {
+    vmCounter++;
+    const nodeId = `vm-${vmCounter}`;
+    const label = `VM-${String(vmCounter).padStart(3, '0')}`;
+    const pos = randomXY();
+
+    nodes.add({
+      id: nodeId,
+      label: label,
+      title: `${label}\nClick para configurar`,
+      shape: 'image',
+      image: PC_IMAGE,
+      x: pos.x,
+      y: pos.y,
+      fixed: false,
+      physics: true
+    });
+
+    vmConfigs[nodeId] = {
+      name: label,
+      ram: 4,
+      cpu: 2,
+      disk: 20,
+      cores: 1,
+      os: 'Ubuntu'
+    };
+  }
+
+  updateStats();
+  network.stabilize(150);
+}
+
 
         // ============================================
         // PLANTILLAS DE TOPOLOGÍA
@@ -957,151 +965,180 @@ document.getElementById('vm-internet').addEventListener('change', function() {
          * Crea topología en estrella
          */
         function createStarTopology(count) {
-            const centerNodeId = `vm-${++vmCounter}`;
-            nodes.add({
-                id: centerNodeId,
-                label: `VM-${String(vmCounter).padStart(3, '0')}\n(Centro)`,
-                color: { background: '#fef3c7', border: '#fbbf24' }
-            });
-            
-            vmConfigs[centerNodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
-            
-            for (let i = 0; i < count - 1; i++) {
-                const nodeId = `vm-${++vmCounter}`;
-                nodes.add({
-                    id: nodeId,
-                    label: `VM-${String(vmCounter).padStart(3, '0')}`
-                });
-                
-                edges.add({
-                    id: `edge-${centerNodeId}-${nodeId}`,
-                    from: centerNodeId,
-                    to: nodeId
-                });
-                
-                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
-            }
-        }
+  if (count < 2) count = 2;
+
+  // Centro aleatorio en el lienzo
+  const center = randomXY();
+  const centerNodeId = `vm-${++vmCounter}`;
+
+  // Nodo central
+  nodes.add({
+    id: centerNodeId,
+    label: `VM-${String(vmCounter).padStart(3, '0')}\n(Centro)`,
+    shape: 'image',
+    image: PC_IMAGE,
+    x: center.x,
+    y: center.y,
+    fixed: false,
+    physics: true
+  });
+  vmConfigs[centerNodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+
+  // Satélites alrededor en círculo
+  const r = 220; // radio del círculo
+  for (let i = 0; i < count - 1; i++) {
+    const nodeId = `vm-${++vmCounter}`;
+    const theta = (2 * Math.PI * i) / (count - 1);
+
+    nodes.add({
+      id: nodeId,
+      label: `VM-${String(vmCounter).padStart(3, '0')}`,
+      shape: 'image',
+      image: PC_IMAGE,
+      x: center.x + r * Math.cos(theta),
+      y: center.y + r * Math.sin(theta),
+      fixed: false,
+      physics: true
+    });
+
+    edges.add({ id: `edge-${centerNodeId}-${nodeId}`, from: centerNodeId, to: nodeId });
+    vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+  }
+
+  updateStats();
+  network.stabilize(150);
+}
+
+
 
         /**
          * Crea topología en anillo
          */
         function createRingTopology(count) {
-            const nodeIds = [];
-            
-            for (let i = 0; i < count; i++) {
-                const nodeId = `vm-${++vmCounter}`;
-                nodes.add({
-                    id: nodeId,
-                    label: `VM-${String(vmCounter).padStart(3, '0')}`
-                });
-                nodeIds.push(nodeId);
-                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
-            }
-            
-            for (let i = 0; i < count; i++) {
-                const from = nodeIds[i];
-                const to = nodeIds[(i + 1) % count];
-                edges.add({
-                    id: `edge-${from}-${to}`,
-                    from: from,
-                    to: to
-                });
-            }
-        }
+  if (count < 3) count = 3;
+
+  const nodeIds = [];
+  const center = randomXY();
+  const r = 240; // radio del anillo
+
+  // Nodos ubicados equidistantes en un círculo
+  for (let i = 0; i < count; i++) {
+    const nodeId = `vm-${++vmCounter}`;
+    const theta = (2 * Math.PI * i) / count;
+
+    nodes.add({
+      id: nodeId,
+      label: `VM-${String(vmCounter).padStart(3, '0')}`,
+      shape: 'image',
+      image: PC_IMAGE,
+      x: center.x + r * Math.cos(theta),
+      y: center.y + r * Math.sin(theta),
+      fixed: false,
+      physics: true
+    });
+
+    nodeIds.push(nodeId);
+    vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+  }
+
+  // Aristas del anillo
+  for (let i = 0; i < count; i++) {
+    const from = nodeIds[i];
+    const to = nodeIds[(i + 1) % count];
+    edges.add({ id: `edge-${from}-${to}`, from, to });
+  }
+
+  updateStats();
+  network.stabilize(150);
+}
 
         /**
          * Crea topología de árbol binario
          */
         function createTreeTopology(count) {
-            const nodeIds = [];
-            
-            for (let i = 0; i < count; i++) {
-                const nodeId = `vm-${++vmCounter}`;
-                const label = i === 0 ? `VM-${String(vmCounter).padStart(3, '0')}\n(Raíz)` : `VM-${String(vmCounter).padStart(3, '0')}`;
-                nodes.add({
-                    id: nodeId,
-                    label: label,
-                    color: i === 0 ? { background: '#fef3c7', border: '#fbbf24' } : undefined
-                });
-                nodeIds.push(nodeId);
-                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
-            }
-            
-            for (let i = 0; i < count; i++) {
-                const leftChild = 2 * i + 1;
-                const rightChild = 2 * i + 2;
-                
-                if (leftChild < count) {
-                    edges.add({
-                        id: `edge-${nodeIds[i]}-${nodeIds[leftChild]}`,
-                        from: nodeIds[i],
-                        to: nodeIds[leftChild]
-                    });
-                }
-                
-                if (rightChild < count) {
-                    edges.add({
-                        id: `edge-${nodeIds[i]}-${nodeIds[rightChild]}`,
-                        from: nodeIds[i],
-                        to: nodeIds[rightChild]
-                    });
-                }
-            }
-        }
+  const nodeIds = [];
+  for (let i = 0; i < count; i++) {
+    const nodeId = `vm-${++vmCounter}`;
+    const label = i === 0
+      ? `VM-${String(vmCounter).padStart(3, '0')}\n(Raíz)`
+      : `VM-${String(vmCounter).padStart(3, '0')}`;
+    const p = randomXY();
+    nodes.add({
+      id: nodeId,
+      label,
+      shape: 'image',
+      image: PC_IMAGE,
+      x: p.x,
+      y: p.y,
+      fixed: false,
+      physics: true
+    });
+    nodeIds.push(nodeId);
+    vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+  }
+  for (let i = 0; i < count; i++) {
+    const L = 2 * i + 1, R = 2 * i + 2;
+    if (L < count) edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[L]}`, from: nodeIds[i], to: nodeIds[L] });
+    if (R < count) edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[R]}`, from: nodeIds[i], to: nodeIds[R] });
+  }
+  network.stabilize(150);
+}
 
         /**
          * Crea topología en bus
          */
         function createBusTopology(count) {
-            const nodeIds = [];
-            
-            for (let i = 0; i < count; i++) {
-                const nodeId = `vm-${++vmCounter}`;
-                nodes.add({
-                    id: nodeId,
-                    label: `VM-${String(vmCounter).padStart(3, '0')}`
-                });
-                nodeIds.push(nodeId);
-                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
-            }
-            
-            for (let i = 0; i < count - 1; i++) {
-                edges.add({
-                    id: `edge-${nodeIds[i]}-${nodeIds[i + 1]}`,
-                    from: nodeIds[i],
-                    to: nodeIds[i + 1]
-                });
-            }
-        }
+  const nodeIds = [];
+  for (let i = 0; i < count; i++) {
+    const nodeId = `vm-${++vmCounter}`;
+    const p = randomXY();
+    nodes.add({
+      id: nodeId,
+      label: `VM-${String(vmCounter).padStart(3, '0')}`,
+      shape: 'image',
+      image: PC_IMAGE,
+      x: p.x,
+      y: p.y,
+      fixed: false,
+      physics: true
+    });
+    nodeIds.push(nodeId);
+    vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+  }
+  for (let i = 0; i < count - 1; i++) {
+    edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[i + 1]}`, from: nodeIds[i], to: nodeIds[i + 1] });
+  }
+  network.stabilize(150);
+}
 
         /**
          * Crea topología de malla completa
          */
         function createMeshTopology(count) {
-            const nodeIds = [];
-            
-            for (let i = 0; i < count; i++) {
-                const nodeId = `vm-${++vmCounter}`;
-                nodes.add({
-                    id: nodeId,
-                    label: `VM-${String(vmCounter).padStart(3, '0')}`
-                });
-                nodeIds.push(nodeId);
-                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
-            }
-            
-            // Conectar todos con todos
-            for (let i = 0; i < count; i++) {
-                for (let j = i + 1; j < count; j++) {
-                    edges.add({
-                        id: `edge-${nodeIds[i]}-${nodeIds[j]}`,
-                        from: nodeIds[i],
-                        to: nodeIds[j]
-                    });
-                }
-            }
-        }
+  const nodeIds = [];
+  for (let i = 0; i < count; i++) {
+    const nodeId = `vm-${++vmCounter}`;
+    const p = randomXY();
+    nodes.add({
+      id: nodeId,
+      label: `VM-${String(vmCounter).padStart(3, '0')}`,
+      shape: 'image',
+      image: PC_IMAGE,
+      x: p.x,
+      y: p.y,
+      fixed: false,
+      physics: true
+    });
+    nodeIds.push(nodeId);
+    vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+  }
+  for (let i = 0; i < count; i++) {
+    for (let j = i + 1; j < count; j++) {
+      edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[j]}`, from: nodeIds[i], to: nodeIds[j] });
+    }
+  }
+  network.stabilize(150);
+}
 
         // ============================================
         // MODO CONEXIÓN MANUAL
@@ -1271,80 +1308,95 @@ document.getElementById('vm-internet').addEventListener('change', function() {
          * Importa una topología desde un archivo JSON
          */
         function importTopology(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const topology = JSON.parse(e.target.result);
-                    
-                    // Limpiar topología actual
-                    nodes.clear();
-                    edges.clear();
-                    vmConfigs = {};
-                    vmCounter = 0;
-                    
-                    // Cargar nodos
-                    if (topology.nodes && Array.isArray(topology.nodes)) {
-                        topology.nodes.forEach(node => {
-                            nodes.add({
-                                id: node.id,
-                                label: node.label,
-                                title: node.config ? 
-                                    `${node.config.name}\n` +
-                                    `RAM: ${node.config.ram}GB | CPU: ${node.config.cpu}v\n` +
-                                    `Disco: ${node.config.disk}GB | Cores: ${node.config.cores}\n` +
-                                    `OS: ${node.config.os}` : undefined,
-                                color: node.color
-                            });
-                            
-                            if (node.config) {
-                                vmConfigs[node.id] = node.config;
-                            }
-                            
-                            // Actualizar contador
-                            const match = node.id.match(/vm-(\d+)/);
-                            if (match) {
-                                const num = parseInt(match[1]);
-                                if (num > vmCounter) {
-                                    vmCounter = num;
-                                }
-                            }
-                        });
-                    }
-                    
-                    // Cargar aristas
-                    if (topology.edges && Array.isArray(topology.edges)) {
-                        topology.edges.forEach(edge => {
-                            edges.add({
-                                id: edge.id,
-                                from: edge.from,
-                                to: edge.to
-                            });
-                        });
-                    }
-                    
-                    // Actualizar zona si existe en metadata
-                    if (topology.metadata && topology.metadata.zone) {
-                        document.getElementById('zone-select').value = topology.metadata.zone;
-                        document.getElementById('zone-display').textContent = topology.metadata.zone;
-                    }
-                    
-                    updateStats();
-                    alert('✅ Topología importada exitosamente');
-                    
-                } catch (error) {
-                    alert('❌ Error al importar topología: ' + error.message);
-                    console.error('Error al importar:', error);
-                }
-            };
-            
-            reader.readAsText(file);
-            
-            // Resetear el input para permitir cargar el mismo archivo nuevamente
-            event.target.value = '';
-        }
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const raw = JSON.parse(e.target.result);
+
+      const topo = raw.topologia ? raw.topologia : raw;
+      const recursos = raw.recursos || {};
+
+      // Reset
+      nodes.clear();
+      edges.clear();
+      vmConfigs = {};
+      vmCounter = 0;
+
+      // Nodos
+      if (Array.isArray(topo.nodes)) {
+        topo.nodes.forEach(n => {
+          const cfg = recursos[n.id] ? {
+            name: recursos[n.id].name,
+            ram: recursos[n.id].ram_gb,
+            cpu: recursos[n.id].vcpu,
+            disk: recursos[n.id].disk_gb,
+            cores: recursos[n.id].cores,
+            os: recursos[n.id].os
+          } : getDefaultConfig(n.label || n.id);
+
+          vmConfigs[n.id] = cfg;
+
+          const title =
+            `${cfg.name}\nRAM: ${cfg.ram}GB | CPU: ${cfg.cpu}v\n` +
+            `Disco: ${cfg.disk}GB | Cores: ${cfg.cores}\nOS: ${cfg.os}`;
+
+          // Usa posición del JSON si viene; si no, random
+          const p = (n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number')
+            ? { x: n.position.x, y: n.position.y }
+            : randomXY();
+
+          nodes.add({
+            id: n.id,
+            label: n.label || cfg.name,
+            title,
+            shape: 'image',
+            image: PC_IMAGE,
+            x: p.x,
+            y: p.y,
+            fixed: false,
+            physics: true   // ← activamos física para que se integre al layout
+          });
+
+          const m = String(n.id).match(/vm-(\d+)/);
+          if (m) vmCounter = Math.max(vmCounter, parseInt(m[1], 10));
+        });
+      }
+
+      // Aristas
+      if (Array.isArray(topo.edges)) {
+        topo.edges.forEach(e2 => {
+          edges.add({ id: e2.id, from: e2.from, to: e2.to });
+        });
+      }
+
+      // Metadata opcional
+      if (raw.metadata?.zone) {
+        const zsel = document.getElementById('zone-select');
+        if (zsel) zsel.value = raw.metadata.zone;
+        const zdisp = document.getElementById('zone-display');
+        if (zdisp) zdisp.textContent = raw.metadata.zone;
+      }
+
+      updateStats();
+      network.stabilize(150);
+      alert('✅ Topología importada exitosamente');
+    } catch (err) {
+      console.error('Error al importar:', err);
+      alert('❌ Error al importar topología: ' + err.message);
+    }
+  };
+
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+
+
+
+
 
         // ============================================
         // EXPORTACIÓN
@@ -1440,9 +1492,16 @@ document.getElementById('vm-internet').addEventListener('change', function() {
          * Actualiza las estadísticas del panel
          */
         function updateStats() {
-            document.getElementById('vm-count-display').textContent = nodes.length;
-            document.getElementById('connection-count-display').textContent = edges.length;
-        }
+  const vmBadge = document.getElementById('vm-count-display');
+  const edgeBadge = document.getElementById('connection-count-display');
+
+  const n = nodes ? nodes.get().length : 0;
+  const e = edges ? edges.get().length : 0;
+
+  if (vmBadge) vmBadge.textContent = n;
+  if (edgeBadge) edgeBadge.textContent = e;
+}
     </script>
 </body>
 </html>
+
