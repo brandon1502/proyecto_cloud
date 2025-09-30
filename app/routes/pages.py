@@ -29,6 +29,13 @@ def home_page(request: Request):
     # Renderiza TU nueva primera interfaz
     return templates.TemplateResponse("home.html", {"request": request, "user": user})
 
+@router.get("/plantillas", response_class=HTMLResponse)
+def projects_page(request: Request):
+    user = _require_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse("plantillas.html", {"request": request, "user": user})
+
 @router.get("/projects", response_class=HTMLResponse)
 def projects_page(request: Request):
     user = _require_user(request)
@@ -36,13 +43,14 @@ def projects_page(request: Request):
         return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse("proyectos.html", {"request": request, "user": user})
 
+
 # ✅ Nueva ruta: Crear topología
-@router.get("/projects/create", response_class=HTMLResponse)
+@router.get("/plantillas/create", response_class=HTMLResponse)
 def create_topology_page(request: Request):
     user = _require_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse("crear_topologia.html", {"request": request, "user": user})
+    return templates.TemplateResponse("crear_plantilla.html", {"request": request, "user": user})
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
 def project_detail_page(project_id: str, request: Request):

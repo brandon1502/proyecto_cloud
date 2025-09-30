@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diseñador de Topología de VMs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" rel="stylesheet">
+    <style>
+
+        .modern-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.modern-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .3s;
+    border-radius: 34px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.modern-switch input:checked + .switch-slider {
+    background-color: #64748b;
+}
+
+.modern-switch input:checked + .switch-slider:before {
+    transform: translateX(22px);
+}
+
+.modern-switch input:focus + .switch-slider {
+    box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.2);
+}    
+
+.form-group {
+    margin-bottom: 20px;
+    background: transparent; /* Sin fondo gris */
+    padding: 0; /* Sin padding extra */
+    border: none; /* Sin bordes */
+    box-shadow: none; /* Sin sombras */
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.form-group input[type="text"],
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: border-color 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(100, 116, 139, 0.08);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #1e293b;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .zone-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .zone-selector label {
+            color: #475569;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .zone-selector select {
+            padding: 8px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .zone-selector select:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+
+        /* Main container */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Toolbox */
+        #toolbox {
+            width: 280px;
+            min-width: 200px;
+            max-width: 500px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(100, 116, 139, 0.05);
+            position: relative;
+            resize: horizontal;
+        }
+
+        #toolbox::-webkit-resizer {
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .toolbox-section {
+            padding: 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .toolbox-section h3 {
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tool-button {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            text-align: left;
+        }
+
+        .tool-button:hover {
+            background: white;
+            border-color: #60a5fa;
+            transform: translateX(5px);
+        }
+
+        .tool-button.active {
+            background: #dbeafe;
+            border-color: #60a5fa;
+        }
+
+        .tool-icon {
+            font-size: 24px;
+        }
+
+        .tool-label {
+            color: #475569;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .input-group button {
+            padding: 8px 16px;
+            background: #60a5fa;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .input-group button:hover {
+            background: #3b82f6;
+        }
+
+        /* Plantillas en grid 2x2 */
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .template-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-align: center;
+        }
+
+        .template-card:hover {
+            background: white;
+            border-color: #60a5fa;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.2);
+        }
+
+        .template-card .tool-icon {
+            font-size: 32px;
+        }
+
+        .template-card .tool-label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        /* File input hidden */
+        #import-file {
+            display: none;
+        }
+
+        /* Canvas */
+          #topology-canvas {
+            flex: 1;
+            background: white;
+            background-image: 
+                linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+        }
+
+        /* Info Panel */
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
+            z-index: 5;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-badge {
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Footer */
+        .footer {
+            background: white;
+            padding: 15px 30px;
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -2px 10px rgba(100, 116, 139, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .footer-left,
+        .footer-right {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid;
+            white-space: nowrap;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #64748b;
+            border-color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .btn-primary {
+            background: #60a5fa;
+            color: white;
+            border-color: #60a5fa;
+        }
+
+        .btn-primary:hover {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .modal-header h2 {
+            color: #1e293b;
+            font-size: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: #475569;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #475569;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #1e293b;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid #f1f5f9;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        #vm-count {
+            flex: 0 0 140px; /* no se estira y ocupa 80px */
+            width: 80px;    /* ancho fijo */
+        }
+
+
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>Diseña tu topología de VMs</h1>
+        
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Toolbox -->
+        <aside id="toolbox">
+            <div class="toolbox-section">
+                <h3>🖥️ VMs Manuales</h3>
+                <div class="input-group">
+                    <input type="number" id="vm-count" placeholder="Cantidad" min="1" value="1">
+                    <button onclick="addManualVMs()">Agregar</button>
+                </div>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>📐 Plantillas</h3>
+                <div class="templates-grid">
+                    <div class="template-card" onclick="openTemplateModal('star')">
+                        <span class="tool-icon">✡</span>
+                        <span class="tool-label">Estrella</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('ring')">
+                        <span class="tool-icon">◯</span>
+                        <span class="tool-label">Anillo</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('tree')">
+                        <span class="tool-icon">𖣂</span>
+                        <span class="tool-label">Árbol</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('bus')">
+                        <span class="tool-icon">─</span>
+                        <span class="tool-label">Bus</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('mesh')">
+                        <span class="tool-icon">🕸️</span>
+                        <span class="tool-label">Malla</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>📥 Importar</h3>
+                <input type="file" id="import-file" accept=".json" onchange="importTopology(event)">
+                <button class="tool-button" onclick="document.getElementById('import-file').click()">
+                    <span class="tool-icon">📂</span>
+                    <span class="tool-label">Importar Topología</span>
+                </button>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                    Selecciona un archivo JSON con la topología
+                </p>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>🔗 Conexiones</h3>
+                <button class="tool-button" id="connection-mode-btn" onclick="toggleConnectionMode()">
+                    <span class="tool-icon">🔌</span>
+                    <span class="tool-label">Modo Conexión</span>
+                </button>
+                <p style="font-size: 12px; color: #64748b; margin-top: 10px;">
+                    Activa y haz clic en dos VMs para conectarlas
+                </p>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>🗑️ Eliminar</h3>
+                <button class="tool-button" onclick="deleteSelected()">
+                    <span class="tool-icon">❌</span>
+                    <span class="tool-label">Eliminar Seleccionado</span>
+                </button>
+                <button class="tool-button" onclick="clearTopology()">
+                    <span class="tool-icon">🧹</span>
+                    <span class="tool-label">Limpiar Todo</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Canvas -->
+        <main id="topology-canvas">
+            <div id="info-panel">
+                <div class="info-item">
+                    <span>VMs:</span>
+                    <span class="info-badge" id="vm-count-display">0</span>
+                </div>
+                <div class="info-item">
+                    <span>Conexiones:</span>
+                    <span class="info-badge" id="connection-count-display">0</span>
+                </div>
+                <div class="info-item">
+                    <span>Zona:</span>
+                    <span class="info-badge" id="zone-display">ZONA-1</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-left">
+            <button class="btn btn-secondary" onclick="window.location.href='/plantillas'">← Volver</button>
+        </div>
+        <div class="footer-right">
+            <button class="btn btn-primary" onclick="exportTopology()">💾 Guardar Topología</button>
+        </div>
+    </footer>
+
+    <!-- Modal para Plantillas -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configurar Plantilla</h2>
+                <button class="modal-close" onclick="closeTemplateModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label>Cantidad de VMs</label>
+                <input type="number" id="template-vm-count" min="2" value="5">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTemplateModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="applyTemplate()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Configuración de VM -->
+    <div id="vm-config-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configuración de VM</h2>
+                <button class="modal-close" onclick="closeVMConfigModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="vm-name" placeholder="VM-001">
+            </div>
+            <div class="form-group">
+  <label>RAM (GB)</label>
+  <select id="vm-ram">
+    <option value="" disabled selected>Seleccionar RAM</option>
+    <option value="1">1 GB</option>
+    <option value="2">2 GB</option>
+    <option value="4">4 GB</option>
+    <option value="8">8 GB</option>
+    <option value="16">16 GB</option>
+    <option value="32">32 GB</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label>CPU (vCPUs)</label>
+  <select id="vm-cpu">
+    <option value="" disabled selected>Seleccionar vCPUs</option>
+    <option value="1">1 vCPU</option>
+    <option value="2">2 vCPUs</option>
+    <option value="4">4 vCPUs</option>
+    <option value="8">8 vCPUs</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label>Disco (GB)</label>
+  <select id="vm-disk">
+    <option value="" disabled selected>Seleccionar Disco</option>
+    <option value="10">10 GB</option>
+    <option value="20">20 GB</option>
+    <option value="40">40 GB</option>
+    <option value="80">80 GB</option>
+    <option value="160">160 GB</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label>Cores</label>
+  <select id="vm-cores">
+    <option value="" disabled selected>Seleccionar Cores</option>
+    <option value="1">1 Core</option>
+    <option value="2">2 Cores</option>
+    <option value="4">4 Cores</option>
+    <option value="8">8 Cores</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label>Sistema Operativo</label>
+  <select id="vm-os">
+    <option value="" disabled selected>Seleccionar SO</option>
+    <option value="Ubuntu">Ubuntu</option>
+    <option value="CirrOS">CirrOS</option>
+  </select>
+</div>
+
+            <div class="form-group"> 
+    <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;">
+        <span>Conexión Externa</span>
+        <div style="display: flex; align-items: center; gap: 10px;"> 
+            <label class="modern-switch"> 
+                <input type="checkbox" id="vm-internet"> 
+                <span class="switch-slider"></span> 
+            </label> 
+            <span id="internet-status" style="font-size: 13px; font-weight: 500; color: #94a3b8; min-width: 35px;">OFF</span> 
+        </div>
+    </label>
+</div>
+        <div class="modal-footer"> 
+            <button class="btn btn-secondary" onclick="closeVMConfigModal()">Cancelar</button> 
+            <button class="btn btn-primary" onclick="saveVMConfig()">Guardar</button> 
+        </div> 
+        </div>
+    </div>
+
+    <script>
+        
+
+
+        
+document.getElementById('vm-internet').addEventListener('change', function() {
+    const status = document.getElementById('internet-status');
+    if (this.checked) {
+        status.textContent = 'ON';
+        status.style.color = '#475569';
+    } else {
+        status.textContent = 'OFF';
+        status.style.color = '#94a3b8';
+    }
+});
+
+
+
+        // ============================================
+        // VARIABLES GLOBALES
+        // ============================================
+        let network; // Red de vis.js
+        let nodes; // DataSet de nodos
+        let edges; // DataSet de aristas
+        let vmCounter = 0; // Contador para IDs únicos
+        let connectionMode = false; // Modo de conexión activo/inactivo
+        let firstNodeSelected = null; // Primer nodo seleccionado para conexión
+        let currentTemplateType = null; // Tipo de plantilla actual
+        let selectedNodeId = null; // ID del nodo seleccionado para configurar
+        let vmConfigs = {}; // Configuraciones de cada VM
+
+        // ============================================
+        // INICIALIZACIÓN
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            initNetwork();
+            updateStats();
+            
+            
+        });
+
+        /**
+         * Inicializa la red de vis.js
+         */
+        function initNetwork() {
+            const container = document.getElementById('topology-canvas');
+            
+            // Crear DataSets para nodos y aristas
+            nodes = new vis.DataSet([]);
+            edges = new vis.DataSet([]);
+            
+            const data = { nodes, edges };
+            
+            // Opciones de configuración de vis.js
+            const PC_IMAGE = '/static/images/pc.png';
+            
+            const options = {
+                nodes: {
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    size: 40,
+                    font: {
+                        size: 14,
+                        color: '#1e293b',
+                        face: 'Segoe UI',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        strokeWidth: 0
+                    },
+                    borderWidth: 2,
+                    borderWidthSelected: 3,
+                    chosen: {
+                        node: function(values, id, selected, hovering) {
+                            values.borderWidth = 3;
+                            values.borderColor = '#3b82f6';
+                        }
+                    }
+                },
+                edges: {
+                    color: {
+                        color: '#94a3b8',
+                        highlight: '#60a5fa'
+                    },
+                    width: 2,
+                    smooth: {
+                        type: 'continuous'
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    stabilization: {
+                        iterations: 100
+                    },
+                    barnesHut: {
+                        gravitationalConstant: -2000,
+                        springConstant: 0.001,
+                        springLength: 200
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 200
+                }
+            };
+            
+            // Crear la red
+            network = new vis.Network(container, data, options);
+            
+            // Event listener para click en nodos
+            network.on('click', function(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    
+                    // Si estamos en modo conexión
+                    if (connectionMode) {
+                        handleConnectionClick(nodeId);
+                    } else {
+                        // Abrir modal de configuración
+                        openVMConfigModal(nodeId);
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // AGREGAR VMs MANUALMENTE
+        // ============================================
+        /**
+         * Agrega VMs manualmente según la cantidad especificada
+         */
+        function addManualVMs() {
+            const count = parseInt(document.getElementById('vm-count').value) || 1;
+            
+            for (let i = 0; i < count; i++) {
+                vmCounter++;
+                const nodeId = `vm-${vmCounter}`;
+                const label = `VM-${String(vmCounter).padStart(3, '0')}`;
+                
+                // Crear nodo
+                nodes.add({
+                    id: nodeId,
+                    label: label,
+                    title: `${label}\nClick para configurar`
+                });
+                
+                // Configuración por defecto
+                vmConfigs[nodeId] = {
+                    name: label,
+                    ram: 4,
+                    cpu: 2,
+                    disk: 20,
+                    cores: 1,
+                    os: 'Ubuntu'
+                };
+            }
+            
+            updateStats();
+        }
+
+        // ============================================
+        // PLANTILLAS DE TOPOLOGÍA
+        // ============================================
+        /**
+         * Abre el modal para seleccionar plantilla
+         */
+        function openTemplateModal(templateType) {
+            currentTemplateType = templateType;
+            document.getElementById('template-modal').classList.add('active');
+        }
+
+        /**
+         * Cierra el modal de plantilla
+         */
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.remove('active');
+            currentTemplateType = null;
+        }
+
+        /**
+         * Aplica la plantilla seleccionada
+         */
+        function applyTemplate() {
+            const count = parseInt(document.getElementById('template-vm-count').value) || 5;
+            
+            switch(currentTemplateType) {
+                case 'star':
+                    createStarTopology(count);
+                    break;
+                case 'ring':
+                    createRingTopology(count);
+                    break;
+                case 'tree':
+                    createTreeTopology(count);
+                    break;
+                case 'bus':
+                    createBusTopology(count);
+                    break;
+                case 'mesh':
+                    createMeshTopology(count);
+                    break;
+            }
+            
+            closeTemplateModal();
+            updateStats();
+        }
+
+        /**
+         * Crea topología en estrella
+         */
+        function createStarTopology(count) {
+            const centerNodeId = `vm-${++vmCounter}`;
+            nodes.add({
+                id: centerNodeId,
+                label: `VM-${String(vmCounter).padStart(3, '0')}\n(Centro)`,
+                color: { background: '#fef3c7', border: '#fbbf24' }
+            });
+            
+            vmConfigs[centerNodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            
+            for (let i = 0; i < count - 1; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`
+                });
+                
+                edges.add({
+                    id: `edge-${centerNodeId}-${nodeId}`,
+                    from: centerNodeId,
+                    to: nodeId
+                });
+                
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+        }
+
+        /**
+         * Crea topología en anillo
+         */
+        function createRingTopology(count) {
+            const nodeIds = [];
+            
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`
+                });
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+            
+            for (let i = 0; i < count; i++) {
+                const from = nodeIds[i];
+                const to = nodeIds[(i + 1) % count];
+                edges.add({
+                    id: `edge-${from}-${to}`,
+                    from: from,
+                    to: to
+                });
+            }
+        }
+
+        /**
+         * Crea topología de árbol binario
+         */
+        function createTreeTopology(count) {
+            const nodeIds = [];
+            
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                const label = i === 0 ? `VM-${String(vmCounter).padStart(3, '0')}\n(Raíz)` : `VM-${String(vmCounter).padStart(3, '0')}`;
+                nodes.add({
+                    id: nodeId,
+                    label: label,
+                    color: i === 0 ? { background: '#fef3c7', border: '#fbbf24' } : undefined
+                });
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+            
+            for (let i = 0; i < count; i++) {
+                const leftChild = 2 * i + 1;
+                const rightChild = 2 * i + 2;
+                
+                if (leftChild < count) {
+                    edges.add({
+                        id: `edge-${nodeIds[i]}-${nodeIds[leftChild]}`,
+                        from: nodeIds[i],
+                        to: nodeIds[leftChild]
+                    });
+                }
+                
+                if (rightChild < count) {
+                    edges.add({
+                        id: `edge-${nodeIds[i]}-${nodeIds[rightChild]}`,
+                        from: nodeIds[i],
+                        to: nodeIds[rightChild]
+                    });
+                }
+            }
+        }
+
+        /**
+         * Crea topología en bus
+         */
+        function createBusTopology(count) {
+            const nodeIds = [];
+            
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`
+                });
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+            
+            for (let i = 0; i < count - 1; i++) {
+                edges.add({
+                    id: `edge-${nodeIds[i]}-${nodeIds[i + 1]}`,
+                    from: nodeIds[i],
+                    to: nodeIds[i + 1]
+                });
+            }
+        }
+
+        /**
+         * Crea topología de malla completa
+         */
+        function createMeshTopology(count) {
+            const nodeIds = [];
+            
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`
+                });
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+            
+            // Conectar todos con todos
+            for (let i = 0; i < count; i++) {
+                for (let j = i + 1; j < count; j++) {
+                    edges.add({
+                        id: `edge-${nodeIds[i]}-${nodeIds[j]}`,
+                        from: nodeIds[i],
+                        to: nodeIds[j]
+                    });
+                }
+            }
+        }
+
+        // ============================================
+        // MODO CONEXIÓN MANUAL
+        // ============================================
+        /**
+         * Activa/desactiva el modo de conexión
+         */
+        function toggleConnectionMode() {
+            connectionMode = !connectionMode;
+            const btn = document.getElementById('connection-mode-btn');
+            
+            if (connectionMode) {
+                btn.classList.add('active');
+                firstNodeSelected = null;
+            } else {
+                btn.classList.remove('active');
+                firstNodeSelected = null;
+            }
+        }
+
+        /**
+         * Maneja el click en modo conexión
+         */
+        function handleConnectionClick(nodeId) {
+            if (!firstNodeSelected) {
+                firstNodeSelected = nodeId;
+                // Resaltar el primer nodo seleccionado
+                network.selectNodes([nodeId]);
+            } else {
+                // Crear conexión entre los dos nodos
+                if (firstNodeSelected !== nodeId) {
+                    const edgeId = `edge-${firstNodeSelected}-${nodeId}`;
+                    
+                    // Verificar si la conexión ya existe
+                    if (!edges.get(edgeId)) {
+                        edges.add({
+                            id: edgeId,
+                            from: firstNodeSelected,
+                            to: nodeId
+                        });
+                        updateStats();
+                    }
+                }
+                
+                // Resetear selección
+                firstNodeSelected = null;
+                network.unselectAll();
+            }
+        }
+
+        // ============================================
+        // CONFIGURACIÓN DE VMs
+        // ============================================
+        /**
+         * Abre el modal de configuración de VM
+         */
+        function openVMConfigModal(nodeId) {
+            selectedNodeId = nodeId;
+            const config = vmConfigs[nodeId] || getDefaultConfig(nodeId);
+            
+            // Llenar el formulario con los valores actuales
+            document.getElementById('vm-name').value = config.name;
+            document.getElementById('vm-ram').value = config.ram;
+            document.getElementById('vm-cpu').value = config.cpu;
+            document.getElementById('vm-disk').value = config.disk;
+            document.getElementById('vm-cores').value = config.cores;
+            document.getElementById('vm-os').value = config.os;
+            
+            document.getElementById('vm-config-modal').classList.add('active');
+        }
+
+        /**
+         * Cierra el modal de configuración
+         */
+        function closeVMConfigModal() {
+            document.getElementById('vm-config-modal').classList.remove('active');
+            selectedNodeId = null;
+        }
+
+        /**
+         * Guarda la configuración de la VM
+         */
+        function saveVMConfig() {
+            if (!selectedNodeId) return;
+            
+            const config = {
+                name: document.getElementById('vm-name').value,
+                ram: parseInt(document.getElementById('vm-ram').value),
+                cpu: parseInt(document.getElementById('vm-cpu').value),
+                disk: parseInt(document.getElementById('vm-disk').value),
+                cores: parseInt(document.getElementById('vm-cores').value),
+                os: document.getElementById('vm-os').value
+            };
+            
+            vmConfigs[selectedNodeId] = config;
+            
+            // Actualizar etiqueta del nodo
+            nodes.update({
+                id: selectedNodeId,
+                label: `${config.name}\n${config.os}`,
+                title: `${config.name}\n` +
+                       `RAM: ${config.ram}GB | CPU: ${config.cpu}v\n` +
+                       `Disco: ${config.disk}GB | Cores: ${config.cores}\n` +
+                       `OS: ${config.os}`
+            });
+            
+            closeVMConfigModal();
+        }
+
+        /**
+         * Retorna configuración por defecto
+         */
+        function getDefaultConfig(name) {
+            return {
+                name: name,
+                ram: 4,
+                cpu: 2,
+                disk: 20,
+                cores: 1,
+                os: 'Ubuntu'
+            };
+        }
+
+        // ============================================
+        // ELIMINACIÓN
+        // ============================================
+        /**
+         * Elimina el elemento seleccionado
+         */
+        function deleteSelected() {
+            const selectedNodes = network.getSelectedNodes();
+            const selectedEdges = network.getSelectedEdges();
+            
+            if (selectedNodes.length > 0) {
+                // Eliminar nodos seleccionados
+                selectedNodes.forEach(nodeId => {
+                    nodes.remove(nodeId);
+                    delete vmConfigs[nodeId];
+                });
+            }
+            
+            if (selectedEdges.length > 0) {
+                // Eliminar aristas seleccionadas
+                edges.remove(selectedEdges);
+            }
+            
+            updateStats();
+        }
+
+        /**
+         * Limpia toda la topología
+         */
+        function clearTopology() {
+            if (confirm('¿Estás seguro de que deseas eliminar toda la topología?')) {
+                nodes.clear();
+                edges.clear();
+                vmConfigs = {};
+                vmCounter = 0;
+                updateStats();
+            }
+        }
+
+        // ============================================
+        // IMPORTAR TOPOLOGÍA
+        // ============================================
+        /**
+         * Importa una topología desde un archivo JSON
+         */
+        function importTopology(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const topology = JSON.parse(e.target.result);
+                    
+                    // Limpiar topología actual
+                    nodes.clear();
+                    edges.clear();
+                    vmConfigs = {};
+                    vmCounter = 0;
+                    
+                    // Cargar nodos
+                    if (topology.nodes && Array.isArray(topology.nodes)) {
+                        topology.nodes.forEach(node => {
+                            nodes.add({
+                                id: node.id,
+                                label: node.label,
+                                title: node.config ? 
+                                    `${node.config.name}\n` +
+                                    `RAM: ${node.config.ram}GB | CPU: ${node.config.cpu}v\n` +
+                                    `Disco: ${node.config.disk}GB | Cores: ${node.config.cores}\n` +
+                                    `OS: ${node.config.os}` : undefined,
+                                color: node.color
+                            });
+                            
+                            if (node.config) {
+                                vmConfigs[node.id] = node.config;
+                            }
+                            
+                            // Actualizar contador
+                            const match = node.id.match(/vm-(\d+)/);
+                            if (match) {
+                                const num = parseInt(match[1]);
+                                if (num > vmCounter) {
+                                    vmCounter = num;
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Cargar aristas
+                    if (topology.edges && Array.isArray(topology.edges)) {
+                        topology.edges.forEach(edge => {
+                            edges.add({
+                                id: edge.id,
+                                from: edge.from,
+                                to: edge.to
+                            });
+                        });
+                    }
+                    
+                    // Actualizar zona si existe en metadata
+                    if (topology.metadata && topology.metadata.zone) {
+                        document.getElementById('zone-select').value = topology.metadata.zone;
+                        document.getElementById('zone-display').textContent = topology.metadata.zone;
+                    }
+                    
+                    updateStats();
+                    alert('✅ Topología importada exitosamente');
+                    
+                } catch (error) {
+                    alert('❌ Error al importar topología: ' + error.message);
+                    console.error('Error al importar:', error);
+                }
+            };
+            
+            reader.readAsText(file);
+            
+            // Resetear el input para permitir cargar el mismo archivo nuevamente
+            event.target.value = '';
+        }
+
+        // ============================================
+        // EXPORTACIÓN
+        // ============================================
+        /**
+         * Exporta la topología a JSON
+         */
+        function exportTopology() {
+  try {
+    // Validación mínima
+    const totalNodes = nodes ? nodes.get().length : 0;
+    if (!totalNodes) {
+      alert('⚠️ No hay VMs para exportar');
+      return;
+    }
+
+    // Subred opcional desde la UI
+    const subredEl = document.getElementById('subred-input');
+    const subred = subredEl && subredEl.value ? subredEl.value.trim() : null;
+
+    // Posiciones actuales de los nodos (para re-dibujar igual en vis.js)
+    const nodeIds = nodes.getIds ? nodes.getIds() : nodes.get().map(n => n.id);
+    const pos = (network && typeof network.getPositions === 'function')
+      ? network.getPositions(nodeIds)
+      : {};
+
+    // 1) TOPOLOGÍA (para vis.js)
+    const topologia = {
+      nodes: nodes.get().map(n => ({
+        id: n.id,
+        label: n.label,
+        position: pos[n.id] ? { x: pos[n.id].x, y: pos[n.id].y } : null,
+        // puedes incluir shape/image si las usas; si no, se ignora
+        shape: n.shape || undefined,
+        image: n.image || undefined,
+        color: n.color || undefined
+      })),
+      edges: edges.get().map(e => ({
+        id: e.id,
+        from: e.from,
+        to: e.to
+      }))
+    };
+
+    // 2) RECURSOS (por VM)
+    //   Tomamos lo que guardaste en vmConfigs (ram, cpu, disk, cores, os, name)
+    const recursos = {};
+    Object.keys(vmConfigs || {}).forEach(id => {
+      const c = vmConfigs[id];
+      recursos[id] = {
+        name: c.name,
+        ram_gb: c.ram,
+        vcpu: c.cpu,
+        disk_gb: c.disk,
+        cores: c.cores,
+        os: c.os
+      };
+    });
+
+    // 3) OBJETO FINAL (sólo lo pedido)
+    const payload = {
+      topologia,
+      recursos,
+      subred  // null si no lo llenas
+    };
+
+    // Serializar y descargar
+    const data = JSON.stringify(payload, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const filename = `topologia-${Date.now()}.json`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert('Plantilla/topología descargada');
+
+  } catch (err) {
+    console.error('Error exportando topología:', err);
+    alert('Error al exportar. Revisa la consola.');
+  }
+}
+
+        // ============================================
+        // UTILIDADES
+        // ============================================
+        /**
+         * Actualiza las estadísticas del panel
+         */
+        function updateStats() {
+            document.getElementById('vm-count-display').textContent = nodes.length;
+            document.getElementById('connection-count-display').textContent = edges.length;
+        }
+    </script>
+</body>
+</html>

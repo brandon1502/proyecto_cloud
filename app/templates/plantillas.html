@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Proyectos - Orquestador Privado</title>
-     <link rel="stylesheet" href="{{ url_for('static', path='css/proyectos.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', path='css/plantillas.css') }}">
 
 </head>
 <body>
@@ -23,12 +24,12 @@
         <span class="menu-icon">🏠</span>
         <span>Inicio</span>
       </a>
-      <a href="/plantillas" class="menu-item" id="plantillasLink">
+      <a href="/plantillas" class="menu-item active" id="plantillasLink">
                 <span class="menu-icon">📝</span>
                 <span>Plantillas</span>
       </a>
 
-      <a href="/projects" class="menu-item active" id="proyectosLink">
+      <a href="/projects" class="menu-item" id="proyectosLink">
         <span class="menu-icon">📁</span>
         <span>Proyectos</span>
       </a>
@@ -50,9 +51,9 @@
   <!-- Main Content -->
   <main class="main-content">
     <div class="page-header">
-      <h1>Proyectos</h1>
+      <h1>Plantillas</h1>
       <button class="btn-new" id="newTopologyBtn">
-        <span>➕</span> Crear Nueva Topología
+        <span>➕</span> Crear Nuevo Template
       </button>
     </div>
 
@@ -68,64 +69,66 @@
           </select>
           <span>entradas</span>
         </div>
-        <div class="action-buttons">
-          <button class="btn-action" id="refreshBtn">
-            <span class="icon">🔄</span>
-            <span class="tooltip">Refresh</span>
-          </button>
-          <button class="btn-action">
-            <span class="icon">▶️</span>
-            <span class="tooltip">Play</span>
-          </button>
-          <button class="btn-action">
-            <span class="icon">⏹️</span>
-            <span class="tooltip">Stop</span>
-          </button>
-          <button class="btn-action">
-            <span class="icon">🗑️</span>
-            <span class="tooltip">Delete</span>
-          </button>
-        </div>
+        
         <div class="search-box">
           <label>Buscar:</label>
           <input type="text" id="searchInput" placeholder="Filtrar por nombre...">
         </div>
       </div>
 
-      <table id="projectsTable">
-        <thead>
-          <tr>
-            <th>Slice</th>
-            <th>Descripción</th>
-            <th>Creación</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <tr onclick="window.location.href='/projects/20215433'">
-            <td>TEL141_2025-2_20215433</td>
-            <td>TEL141_2025-2_20215433</td>
-            <td>2025-08-18 06:30:53.730Z</td>
-            <td><span class="status-badge status-running">RUNNING</span></td>
-          </tr>
-          <tr onclick="window.location.href='/projects/20215789'">
-            <td>TEL141_2025-1_20215789</td>
-            <td>Topología de red básica</td>
-            <td>2025-07-15 14:22:10.123Z</td>
-            <td><span class="status-badge status-running">RUNNING</span></td>
-          </tr>
-          <tr onclick="window.location.href='/projects/20214567'">
-            <td>TEL141_2024-2_20214567</td>
-            <td>Proyecto de prueba</td>
-            <td>2025-06-20 09:45:30.456Z</td>
-            <td><span class="status-badge status-stopped">STOPPED</span></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-wrapper">
+        <table id="projectsTable">
+          <thead>
+            <tr>
+              <th>Slice</th>
+              <th>Descripción</th>
+              <th>Creación</th>
+              <th>Última Modificación</th>
+              <th>vCPUs</th>
+              <th>RAM (GB)</th>
+              <th>Disco (GB)</th>
+              <th>VMs</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td>TEL141_2025-2_20215433</td>
+              <td>TEL141_2025-2_20215433</td>
+              <td>2025-08-18 06:30</td>
+              <td>2025-09-15 14:22</td>
+              <td>8</td>
+              <td>16</td>
+              <td>12</td>
+              <td>3</td>
+              <td>
+                <div class="action-buttons">
+                <button class="btn-action view" onclick="viewTemplate('20215433')">
+                    <i class="fa-solid fa-eye"></i>
+                    <span class="tooltip">Ver</span>
+                </button>
+                <button class="btn-action edit" onclick="editTemplate('20215433')">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="tooltip">Editar</span>
+                </button>
+                <button class="btn-action delete" onclick="deleteTemplate('20215433')">
+                    <i class="fa-solid fa-trash"></i>
+                    <span class="tooltip">Eliminar</span>
+                </button>
+                </div>
+
+              </td>
+            </tr>
+            
+              
+        
+          </tbody>
+        </table>
+      </div>
 
       <div class="table-footer">
         <div style="color: #64748b; font-size: 14px;">
-          Mostrando <span id="showingInfo">1 a 3 de 3</span> entradas
+          Mostrando <span id="showingInfo">1 a 5 de 5</span> entradas
         </div>
         <div class="pagination">
           <button id="prevBtn">Anterior</button>
@@ -158,13 +161,7 @@
     });
 
     document.getElementById('newTopologyBtn').addEventListener('click', () => {
-      // aquí puedes enlazar al formulario real
-      window.location.href = '/projects/create';
-    });
-
-    // Refresh button
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-      window.location.reload();
+      window.location.href = '/plantillas/create';
     });
 
     // Search functionality
@@ -176,9 +173,25 @@
         row.style.display = text.includes(searchTerm) ? '' : 'none';
       });
     });
+
+    // Action functions
+    function viewTemplate(id) {
+      console.log('Ver plantilla:', id);
+      window.location.href = `/projects/${id}/view`;
+    }
+
+    function editTemplate(id) {
+      console.log('Editar plantilla:', id);
+      window.location.href = `/projects/${id}/edit`;
+    }
+
+    function deleteTemplate(id) {
+      if (confirm(`¿Estás seguro de que deseas eliminar la plantilla ${id}?`)) {
+        console.log('Eliminar plantilla:', id);
+        // Aquí iría la llamada al API para eliminar
+        // fetch(`/api/templates/${id}`, { method: 'DELETE' })
+      }
+    }
   </script>
 </body>
 </html>
-
-
-
