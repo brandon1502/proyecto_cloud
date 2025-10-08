@@ -1,16 +1,17 @@
 # app/settings.py
-from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    APP_NAME: str = "PUCP Private Orchestrator"
-    JWT_SECRET: str = Field(default="devsupersecret-change-me")  # c�mbialo en prod
+    APP_NAME: str = "PUCP Orchestrator"
+    DATABASE_URL: str
+    JWT_SECRET: str
     JWT_ALG: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 8 * 60  # 8 horas
-    COOKIE_NAME: str = "access_token"
+    JWT_EXPIRE_MINUTES: int = 60
+    COOKIE_NAME: str = "orchestrator_session"
+    COOKIE_SECURE: int = 0
     COOKIE_SAMESITE: str = "lax"
-    COOKIE_SECURE: bool = False  # en prod: True (HTTPS)
-    DEBUG: bool = True
 
+    # Configuración para leer .env
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

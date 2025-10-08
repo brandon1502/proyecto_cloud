@@ -7,15 +7,46 @@ services:
     restart: always
     ports:
       - "8000:8000"
-    environment:
-      # Variables que puede usar tu app (puedes moverlas a un .env)
-      JWT_SECRET: "devsupersecret-change-me"
-      COOKIE_SECURE: "0"       # 1 en producción con HTTPS
-      COOKIE_SAMESITE: "lax"
+    env_file: .env
     volumes:
-      - ./app:/app/app   # en desarrollo: monta tu código para autoreload
+      - ./app:/app/app
+    depends_on:
+      - db
     command: >
-      uvicorn app.main:app
-      --host 0.0.0.0
-      --port 8000
-      --reload
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks: [backend]
+
+  db:
+    image: mysql:8.0
+    container_name: orchestrator_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: orchestrator
+      MYSQL_USER: orch
+      MYSQL_PASSWORD: orchpass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks: [backend]
+
+  pma:
+    image: phpmyadmin:5
+    container_name: orchestrator_pma
+    restart: always
+    depends_on: [db]
+    environment:
+      PMA_HOST: db
+      PMA_USER: orch
+      PMA_PASSWORD: orchpass
+    ports:
+      - "8080:80"
+    networks: [backend]
+
+volumes:
+  mysql_data:
+
+networks:
+  backend:

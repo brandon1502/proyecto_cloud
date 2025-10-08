@@ -748,6 +748,28 @@
         </div>
     </div>
 
+    <!-- Modal para Guardar Topología -->
+    <div id="save-topology-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Guardar Topología</h2>
+                <button class="modal-close" onclick="closeSaveModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label>Nombre del Slice</label>
+                <input type="text" id="save-slice-name" placeholder="Ej: Slice prueba">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" id="save-description" placeholder="Ingresa una breve descripción">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeSaveModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmSaveTopology()">Guardar</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         
 
@@ -1404,6 +1426,7 @@ function randomXY() {
         /**
          * Exporta la topología a JSON
          */
+        
         function exportTopology() {
   try {
     // Validación mínima
@@ -1412,77 +1435,110 @@ function randomXY() {
       alert('⚠️ No hay VMs para exportar');
       return;
     }
-
-    // Subred opcional desde la UI
-    const subredEl = document.getElementById('subred-input');
-    const subred = subredEl && subredEl.value ? subredEl.value.trim() : null;
-
-    // Posiciones actuales de los nodos (para re-dibujar igual en vis.js)
-    const nodeIds = nodes.getIds ? nodes.getIds() : nodes.get().map(n => n.id);
-    const pos = (network && typeof network.getPositions === 'function')
-      ? network.getPositions(nodeIds)
-      : {};
-
-    // 1) TOPOLOGÍA (para vis.js)
-    const topologia = {
-      nodes: nodes.get().map(n => ({
-        id: n.id,
-        label: n.label,
-        position: pos[n.id] ? { x: pos[n.id].x, y: pos[n.id].y } : null,
-        // puedes incluir shape/image si las usas; si no, se ignora
-        shape: n.shape || undefined,
-        image: n.image || undefined,
-        color: n.color || undefined
-      })),
-      edges: edges.get().map(e => ({
-        id: e.id,
-        from: e.from,
-        to: e.to
-      }))
-    };
-
-    // 2) RECURSOS (por VM)
-    //   Tomamos lo que guardaste en vmConfigs (ram, cpu, disk, cores, os, name)
-    const recursos = {};
-    Object.keys(vmConfigs || {}).forEach(id => {
-      const c = vmConfigs[id];
-      recursos[id] = {
-        name: c.name,
-        ram_gb: c.ram,
-        vcpu: c.cpu,
-        disk_gb: c.disk,
-        cores: c.cores,
-        os: c.os
-      };
-    });
-
-    // 3) OBJETO FINAL (sólo lo pedido)
-    const payload = {
-      topologia,
-      recursos,
-      subred  // null si no lo llenas
-    };
-
-    // Serializar y descargar
-    const data = JSON.stringify(payload, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const filename = `topologia-${Date.now()}.json`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    alert('Plantilla/topología descargada');
+    
+    // Abrir el modal en lugar de exportar directamente
+    document.getElementById('save-topology-modal').classList.add('active');
 
   } catch (err) {
     console.error('Error exportando topología:', err);
     alert('Error al exportar. Revisa la consola.');
   }
+} 
+
+
+/**
+ * Cierra el modal de guardar
+ */
+function closeSaveModal() {
+    document.getElementById('save-topology-modal').classList.remove('active');
+    document.getElementById('save-slice-name').value = '';
+    document.getElementById('save-description').value = '';
+}
+
+/**
+ * Confirma y guarda la topología con los datos del modal
+ */
+function confirmSaveTopology() {
+    const sliceName = document.getElementById('save-slice-name').value.trim();
+    const description = document.getElementById('save-description').value.trim();
+    
+    if (!sliceName) {
+        alert('⚠️ Por favor ingresa el nombre del slice');
+        return;
+    }
+    
+    try {
+        // Subred opcional desde la UI
+        const subredEl = document.getElementById('subred-input');
+        const subred = subredEl && subredEl.value ? subredEl.value.trim() : null;
+
+        // Posiciones actuales de los nodos
+        const nodeIds = nodes.getIds ? nodes.getIds() : nodes.get().map(n => n.id);
+        const pos = (network && typeof network.getPositions === 'function')
+            ? network.getPositions(nodeIds)
+            : {};
+
+        // 1) TOPOLOGÍA (para vis.js)
+        const topologia = {
+            nodes: nodes.get().map(n => ({
+                id: n.id,
+                label: n.label,
+                position: pos[n.id] ? { x: pos[n.id].x, y: pos[n.id].y } : null,
+                shape: n.shape || undefined,
+                image: n.image || undefined,
+                color: n.color || undefined
+            })),
+            edges: edges.get().map(e => ({
+                id: e.id,
+                from: e.from,
+                to: e.to
+            }))
+        };
+
+        // 2) RECURSOS (por VM)
+        const recursos = {};
+        Object.keys(vmConfigs || {}).forEach(id => {
+            const c = vmConfigs[id];
+            recursos[id] = {
+                name: c.name,
+                ram_gb: c.ram,
+                vcpu: c.cpu,
+                disk_gb: c.disk,
+                cores: c.cores,
+                os: c.os
+            };
+        });
+
+        // 3) OBJETO FINAL (con slice_name y description)
+        const payload = {
+            slice_name: sliceName,
+            description: description,
+            topologia,
+            recursos,
+            subred
+        };
+
+        // Serializar y descargar
+        const data = JSON.stringify(payload, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const filename = `${sliceName}.json`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        closeSaveModal();
+        alert('✅ Plantilla/topología descargada');
+
+    } catch (err) {
+        console.error('Error exportando topología:', err);
+        alert('❌ Error al exportar. Revisa la consola.');
+    }
 }
 
         // ============================================
@@ -1503,5 +1559,6 @@ function randomXY() {
 }
     </script>
 </body>
+
 </html>
 

@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login</title>
-      <link rel="stylesheet" href="{{ url_for('static', path='css/login.css') }}">
-
+  <link rel="stylesheet" href="{{ url_for('static', path='css/login.css') }}">
 </head>
 <body>
   <div class="container">
@@ -15,16 +14,17 @@
       <p class="subtitle">Ingresa tus credenciales para continuar</p>
     </div>
 
-    <!-- MENSAJE DE ERROR (opcional) -->
+    <!-- Ocúltalo con CSS por defecto (display:none) -->
     <div id="errorBox" class="error">Usuario o contraseña inválidos</div>
 
-    <!-- IMPORTANTE: action/method y names correctos -->
     <form id="loginForm" action="/auth/login" method="post" autocomplete="on">
       <div class="form-group">
-        <label for="usuario">Usuario</label>
-        <input type="tex id="usuario"
-          name="username"           
-          placeholder="Ingresa tu usuario"
+        <label for="usuario">Correo</label>
+        <input
+          type="text"
+          id="usuario"
+          name="email"
+          placeholder="Ingresa tu correo"
           required
           autocomplete="username"
           autofocus
@@ -36,45 +36,45 @@
         <input
           type="password"
           id="password"
-          name="password"           
+          name="password"
           placeholder="Ingresa tu contraseña"
           required
           autocomplete="current-password"
         >
       </div>
 
-      <div class="forgot-password">
-        <a href="#" id="forgotLink">¿Ha olvidado su contraseña?</a>
-      </div>
-
       <button type="submit" class="btn-login" id="submitBtn">Iniciar Sesión</button>
     </form>
+
+    <div class="register-link">
+      <p>¿No tienes cuenta? <a href="/registro">Regístrate aquí</a></p>
+    </div>
   </div>
 
   <script>
-    // Mostrar error si viene ?error=1
     (function(){
       const params = new URLSearchParams(window.location.search);
+      // Mostrar error si viene ?error=1
       if (params.get('error') === '1') {
         const box = document.getElementById('errorBox');
-        box.style.display = 'block';
+        if (box) box.style.display = 'block';
+      }
+      // Aviso de registro OK
+      if (params.get('registered') === '1') {
+        alert('✅ Registro exitoso. Ahora puedes iniciar sesión.');
       }
     })();
 
-    // Prevención de doble envío (opcional)
-    const form = document.getElementById('loginForm');
-    const submitBtn = document.getElementById('submitBtn');
-    form.addEventListener('submit', () => {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Ingresando...';
-      // No hacemos preventDefault: dejamos que el navegador haga el POST y siga el 303 → /home
-    });
-
-    // Link de “olvidé mi contraseña” (placeholder)
-    document.getElementById('forgotLink').addEventListener('click', (e) => {
-      e.preventDefault();
-      alert('Redirigiendo a recuperación de contraseña…');
-    });
+    // Prevención de doble envío
+    (function(){
+      const form = document.getElementById('loginForm');
+      const btn = document.getElementById('submitBtn');
+      if (!form || !btn) return;
+      form.addEventListener('submit', () => {
+        btn.disabled = true;
+        btn.textContent = 'Ingresando...';
+      });
+    })();
   </script>
 </body>
 </html>

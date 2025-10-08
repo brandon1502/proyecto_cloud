@@ -4,8 +4,227 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Proyectos - Orquestador Privado</title>
-     <link rel="stylesheet" href="{{ url_for('static', path='css/proyectos.css') }}">
+  <link rel="stylesheet" href="../static/css/proyectos.css">
+  <style>
+    /* Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
 
+    .modal-overlay.active {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-container {
+      background: white;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 20px 60px rgba(100, 116, 139, 0.25);
+      animation: slideUp 0.3s ease;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 2px solid #cbd5e1;
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE and Edge */
+    }
+
+    .modal-container::-webkit-scrollbar {
+      display: none; /* Chrome, Safari, Opera */
+    }
+
+    .modal-header {
+      padding: 28px 28px 20px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 26px;
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: 28px;
+    }
+
+    .form-group {
+      margin-bottom: 26px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 15px;
+    }
+
+    .form-select {
+      width: 100%;
+      padding: 13px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #1e293b;
+      background-color: white;
+      transition: all 0.2s;
+      cursor: pointer;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .form-select:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+    }
+
+    .zone-options {
+      display: grid;
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .zone-option {
+      display: flex;
+      align-items: center;
+      padding: 18px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .zone-option:hover {
+      border-color: #60a5fa;
+      background: #f8fafc;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
+    }
+
+    .zone-option input[type="radio"] {
+      margin-right: 14px;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: #60a5fa;
+    }
+
+    .zone-option.selected {
+      border-color: #60a5fa;
+      background: linear-gradient(90deg, rgba(125, 211, 252, 0.15) 0%, rgba(96, 165, 250, 0.05) 100%);
+      box-shadow: 0 2px 12px rgba(96, 165, 250, 0.2);
+    }
+
+    .zone-info {
+      flex: 1;
+    }
+
+    .zone-title {
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .zone-description {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .modal-footer {
+      padding: 20px 28px;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .btn-modal {
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .btn-cancel {
+      background: white;
+      color: #475569;
+      border-color: #e2e8f0;
+    }
+
+    .btn-cancel:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .btn-deploy {
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      color: white;
+      box-shadow: 0 2px 12px rgba(96, 165, 250, 0.3);
+    }
+
+    .btn-deploy:hover {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(96, 165, 250, 0.4);
+    }
+
+    .btn-deploy:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Sidebar -->
@@ -24,8 +243,8 @@
         <span>Inicio</span>
       </a>
       <a href="/plantillas" class="menu-item" id="plantillasLink">
-                <span class="menu-icon">📝</span>
-                <span>Plantillas</span>
+        <span class="menu-icon">📝</span>
+        <span>Plantillas</span>
       </a>
 
       <a href="/projects" class="menu-item active" id="proyectosLink">
@@ -52,7 +271,7 @@
     <div class="page-header">
       <h1>Proyectos</h1>
       <button class="btn-new" id="newTopologyBtn">
-        <span>➕</span> Crear Nueva Topología
+        <span>➕</span> Desplegar plantilla
       </button>
     </div>
 
@@ -68,24 +287,7 @@
           </select>
           <span>entradas</span>
         </div>
-        <div class="action-buttons">
-          <button class="btn-action" id="refreshBtn">
-            <span class="icon">🔄</span>
-            <span class="tooltip">Refresh</span>
-          </button>
-          <button class="btn-action">
-            <span class="icon">▶️</span>
-            <span class="tooltip">Play</span>
-          </button>
-          <button class="btn-action">
-            <span class="icon">⏹️</span>
-            <span class="tooltip">Stop</span>
-          </button>
-          <button class="btn-action">
-            <span class="icon">🗑️</span>
-            <span class="tooltip">Delete</span>
-          </button>
-        </div>
+        
         <div class="search-box">
           <label>Buscar:</label>
           <input type="text" id="searchInput" placeholder="Filtrar por nombre...">
@@ -136,6 +338,64 @@
     </div>
   </main>
 
+  <!-- Modal Desplegar Topología -->
+  <div class="modal-overlay" id="deployModal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h2>Desplegar Topología</h2>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Seleccionar Plantilla -->
+        <div class="form-group">
+          <label for="templateSelect">Seleccionar Plantilla</label>
+          <select id="templateSelect" class="form-select">
+            <option value="">-- Seleccione una plantilla --</option>
+            <option value="template1">Plantilla Básica</option>
+            <option value="template2">Plantilla Red Empresarial</option>
+            <option value="template3">Plantilla Alta Disponibilidad</option>
+            <option value="template4">Plantilla Balanceo de Carga</option>
+          </select>
+        </div>
+
+        <!-- Zona de Disponibilidad -->
+        <div class="form-group">
+          <label>Zona de Disponibilidad</label>
+          <div class="zone-options">
+            <label class="zone-option" for="zone1">
+              <input type="radio" name="zone" id="zone1" value="zone1">
+              <div class="zone-info">
+                <div class="zone-title">Zona 1</div>
+                <div class="zone-description">1 servidor disponible</div>
+              </div>
+            </label>
+
+            <label class="zone-option" for="zone2">
+              <input type="radio" name="zone" id="zone2" value="zone2">
+              <div class="zone-info">
+                <div class="zone-title">Zona 2</div>
+                <div class="zone-description">2 servidores disponibles</div>
+              </div>
+            </label>
+
+            <label class="zone-option" for="zone3">
+              <input type="radio" name="zone" id="zone3" value="zone3">
+              <div class="zone-info">
+                <div class="zone-title">Zona 3</div>
+                <div class="zone-description">4 servidores disponibles</div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-modal btn-cancel" id="cancelBtn">Cancelar</button>
+        <button class="btn-modal btn-deploy" id="deployBtn" disabled>Desplegar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Toggle sidebar
     const toggleBtn = document.getElementById('toggleSidebar');
@@ -148,23 +408,84 @@
       toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
     });
 
-    // Navegación real
-    document.getElementById('inicioLink').addEventListener('click', (e) => {
-      // ya tiene href=/home
+    // Modal functionality
+    const modal = document.getElementById('deployModal');
+    const newTopologyBtn = document.getElementById('newTopologyBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const deployBtn = document.getElementById('deployBtn');
+    const templateSelect = document.getElementById('templateSelect');
+    const zoneRadios = document.querySelectorAll('input[name="zone"]');
+    const zoneOptions = document.querySelectorAll('.zone-option');
+
+    // Abrir modal
+    newTopologyBtn.addEventListener('click', () => {
+      modal.classList.add('active');
     });
 
-    document.getElementById('logoutLink').addEventListener('click', (e) => {
-      // ya tiene href=/auth/logout
+    // Cerrar modal
+    cancelBtn.addEventListener('click', () => {
+      modal.classList.remove('active');
+      resetForm();
     });
 
-    document.getElementById('newTopologyBtn').addEventListener('click', () => {
-      // aquí puedes enlazar al formulario real
-      window.location.href = '/projects/create';
+    // Cerrar al hacer clic fuera del modal
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+        resetForm();
+      }
     });
 
-    // Refresh button
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-      window.location.reload();
+    // Manejar selección de zona
+    zoneOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        zoneOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        validateForm();
+      });
+    });
+
+    // Validar formulario
+    templateSelect.addEventListener('change', validateForm);
+    zoneRadios.forEach(radio => {
+      radio.addEventListener('change', validateForm);
+    });
+
+    function validateForm() {
+      const templateSelected = templateSelect.value !== '';
+      const zoneSelected = Array.from(zoneRadios).some(radio => radio.checked);
+      deployBtn.disabled = !(templateSelected && zoneSelected);
+    }
+
+    function resetForm() {
+      templateSelect.value = '';
+      zoneRadios.forEach(radio => radio.checked = false);
+      zoneOptions.forEach(opt => opt.classList.remove('selected'));
+      deployBtn.disabled = true;
+    }
+
+    // Desplegar topología
+    deployBtn.addEventListener('click', () => {
+      const template = templateSelect.value;
+      const zone = document.querySelector('input[name="zone"]:checked').value;
+      
+      console.log('Desplegando:', { template, zone });
+      
+      // Aquí puedes hacer la petición al backend
+      // Por ejemplo:
+      // fetch('/projects/deploy', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ template, zone })
+      // })
+      // .then(response => response.json())
+      // .then(data => {
+      //   window.location.href = `/projects/${data.id}`;
+      // });
+      
+      alert(`Desplegando plantilla: ${template} en ${zone}`);
+      modal.classList.remove('active');
+      resetForm();
     });
 
     // Search functionality
@@ -179,6 +500,3 @@
   </script>
 </body>
 </html>
-
-
-

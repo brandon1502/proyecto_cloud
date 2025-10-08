@@ -5,8 +5,74 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Proyectos - Orquestador Privado</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link rel="stylesheet" href="{{ url_for('static', path='css/plantillas.css') }}">
+  <link rel="stylesheet" href="../static/css/plantillas.css">
+  <style>
+    /* Ajustes para la tabla con bordes redondeados */
+    .table-wrapper {
+      overflow-x: auto;
+      overflow-y: visible;
+      border-radius: 0 0 15px 15px;
+    }
 
+    .table-container {
+      border-radius: 15px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: auto;
+    }
+
+    /* Bordes redondeados en las esquinas de la tabla */
+    thead tr:first-child th:first-child {
+      border-top-left-radius: 0;
+    }
+
+    thead tr:first-child th:last-child {
+      border-top-right-radius: 0;
+    }
+
+    tbody tr:last-child td:first-child {
+      border-bottom-left-radius: 15px;
+    }
+
+    tbody tr:last-child td:last-child {
+      border-bottom-right-radius: 15px;
+    }
+
+    /* Ajuste de anchos de columna más compactos */
+    th:nth-child(1), td:nth-child(1) { width: 15%; min-width: 140px; } /* Slice */
+    th:nth-child(2), td:nth-child(2) { width: 18%; min-width: 150px; } /* Descripción */
+    th:nth-child(3), td:nth-child(3) { width: 11%; min-width: 100px; } /* Creación */
+    th:nth-child(4), td:nth-child(4) { width: 11%; min-width: 100px; } /* Modificación */
+    th:nth-child(5), td:nth-child(5) { width: 7%; min-width: 60px; text-align: center; } /* vCPUs */
+    th:nth-child(6), td:nth-child(6) { width: 8%; min-width: 70px; text-align: center; } /* RAM */
+    th:nth-child(7), td:nth-child(7) { width: 8%; min-width: 70px; text-align: center; } /* Disco */
+    th:nth-child(8), td:nth-child(8) { width: 6%; min-width: 50px; text-align: center; } /* VMs */
+    th:nth-child(9), td:nth-child(9) { width: 11%; min-width: 120px; text-align: center; } /* Acciones */
+
+    /* Hacer texto más compacto */
+    td {
+      padding: 14px 12px;
+      font-size: 13px;
+    }
+
+    th {
+      padding: 12px 12px;
+      font-size: 13px;
+    }
+
+    /* Reducir tamaño de fechas */
+    td:nth-child(3), td:nth-child(4) {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    
+  </style>
 </head>
 <body>
   <!-- Sidebar -->
@@ -25,8 +91,8 @@
         <span>Inicio</span>
       </a>
       <a href="/plantillas" class="menu-item active" id="plantillasLink">
-                <span class="menu-icon">📝</span>
-                <span>Plantillas</span>
+        <span class="menu-icon">📝</span>
+        <span>Plantillas</span>
       </a>
 
       <a href="/projects" class="menu-item" id="proyectosLink">
@@ -83,7 +149,7 @@
               <th>Slice</th>
               <th>Descripción</th>
               <th>Creación</th>
-              <th>Última Modificación</th>
+              <th>Ultima modificación</th>
               <th>vCPUs</th>
               <th>RAM (GB)</th>
               <th>Disco (GB)</th>
@@ -93,42 +159,90 @@
           </thead>
           <tbody id="tableBody">
             <tr>
-              <td>TEL141_2025-2_20215433</td>
-              <td>TEL141_2025-2_20215433</td>
-              <td>2025-08-18 06:30</td>
-              <td>2025-09-15 14:22</td>
+              <td>TEL141_2025-2</td>
+              <td>Plantilla básica</td>
+              <td>2025-08-18</td>
+              <td>2025-09-15</td>
               <td>8</td>
               <td>16</td>
-              <td>12</td>
+              <td>120</td>
               <td>3</td>
               <td>
                 <div class="action-buttons">
-                <button class="btn-action view" onclick="viewTemplate('20215433')">
+                  <button class="btn-action view" onclick="viewTemplate('20215433')">
                     <i class="fa-solid fa-eye"></i>
                     <span class="tooltip">Ver</span>
-                </button>
-                <button class="btn-action edit" onclick="editTemplate('20215433')">
+                  </button>
+                  <button class="btn-action edit" onclick="editTemplate('20215433')">
                     <i class="fa-solid fa-pen-to-square"></i>
                     <span class="tooltip">Editar</span>
-                </button>
-                <button class="btn-action delete" onclick="deleteTemplate('20215433')">
+                  </button>
+                  <button class="btn-action delete" onclick="deleteTemplate('20215433')">
                     <i class="fa-solid fa-trash"></i>
                     <span class="tooltip">Eliminar</span>
-                </button>
+                  </button>
                 </div>
-
               </td>
             </tr>
-            
-              
-        
+            <tr>
+              <td>TEL141_2025-1</td>
+              <td>Red empresarial</td>
+              <td>2025-07-15</td>
+              <td>2025-08-20</td>
+              <td>12</td>
+              <td>32</td>
+              <td>240</td>
+              <td>5</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn-action view" onclick="viewTemplate('20215789')">
+                    <i class="fa-solid fa-eye"></i>
+                    <span class="tooltip">Ver</span>
+                  </button>
+                  <button class="btn-action edit" onclick="editTemplate('20215789')">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="tooltip">Editar</span>
+                  </button>
+                  <button class="btn-action delete" onclick="deleteTemplate('20215789')">
+                    <i class="fa-solid fa-trash"></i>
+                    <span class="tooltip">Eliminar</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>TEL141_2024-2</td>
+              <td>Alta disponibilidad</td>
+              <td>2025-06-20</td>
+              <td>2025-07-10</td>
+              <td>16</td>
+              <td>64</td>
+              <td>480</td>
+              <td>8</td>
+              <td>
+                <div class="action-buttons">
+                  <button class="btn-action view" onclick="viewTemplate('20214567')">
+                    <i class="fa-solid fa-eye"></i>
+                    <span class="tooltip">Ver</span>
+                  </button>
+                  <button class="btn-action edit" onclick="editTemplate('20214567')">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="tooltip">Editar</span>
+                  </button>
+                  <button class="btn-action delete" onclick="deleteTemplate('20214567')">
+                    <i class="fa-solid fa-trash"></i>
+                    <span class="tooltip">Eliminar</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
 
       <div class="table-footer">
         <div style="color: #64748b; font-size: 14px;">
-          Mostrando <span id="showingInfo">1 a 5 de 5</span> entradas
+          Mostrando <span id="showingInfo">1 a 3 de 3</span> entradas
         </div>
         <div class="pagination">
           <button id="prevBtn">Anterior</button>

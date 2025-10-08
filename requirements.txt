@@ -1,9 +1,10 @@
 fastapi
 uvicorn[standard]
-jinja2
+sqlalchemy
+pymysql
+cryptography
+passlib
 PyJWT
-pydantic
+jinja2
+python-multipart
 pydantic-settings
-python-multipart>=0.0.9
-
-
