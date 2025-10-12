@@ -1466,80 +1466,36 @@ function confirmSaveTopology() {
         alert('⚠️ Por favor ingresa el nombre del slice');
         return;
     }
-    
-    try {
-        // Subred opcional desde la UI
-        const subredEl = document.getElementById('subred-input');
-        const subred = subredEl && subredEl.value ? subredEl.value.trim() : null;
 
-        // Posiciones actuales de los nodos
-        const nodeIds = nodes.getIds ? nodes.getIds() : nodes.get().map(n => n.id);
-        const pos = (network && typeof network.getPositions === 'function')
-            ? network.getPositions(nodeIds)
-            : {};
+    const topologia = { nodes: nodes.get(), edges: edges.get() };
+    const recursos = vmConfigs;
 
-        // 1) TOPOLOGÍA (para vis.js)
-        const topologia = {
-            nodes: nodes.get().map(n => ({
-                id: n.id,
-                label: n.label,
-                position: pos[n.id] ? { x: pos[n.id].x, y: pos[n.id].y } : null,
-                shape: n.shape || undefined,
-                image: n.image || undefined,
-                color: n.color || undefined
-            })),
-            edges: edges.get().map(e => ({
-                id: e.id,
-                from: e.from,
-                to: e.to
-            }))
-        };
+    const payload = {
+        slice_name: sliceName,
+        description: description,
+        topologia: topologia,
+        recursos: recursos
+    };
 
-        // 2) RECURSOS (por VM)
-        const recursos = {};
-        Object.keys(vmConfigs || {}).forEach(id => {
-            const c = vmConfigs[id];
-            recursos[id] = {
-                name: c.name,
-                ram_gb: c.ram,
-                vcpu: c.cpu,
-                disk_gb: c.disk,
-                cores: c.cores,
-                os: c.os
-            };
-        });
-
-        // 3) OBJETO FINAL (con slice_name y description)
-        const payload = {
-            slice_name: sliceName,
-            description: description,
-            topologia,
-            recursos,
-            subred
-        };
-
-        // Serializar y descargar
-        const data = JSON.stringify(payload, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-
-        const filename = `${sliceName}.json`;
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        closeSaveModal();
-        alert('✅ Plantilla/topología descargada');
-
-    } catch (err) {
-        console.error('Error exportando topología:', err);
-        alert('❌ Error al exportar. Revisa la consola.');
-    }
+    fetch("/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Error al guardar template");
+        return res.json();
+    })
+    .then(data => {
+        alert("✅ Template guardado correctamente");
+        window.location.href = "/plantillas";
+    })
+    .catch(err => {
+        console.error(err);
+        alert("❌ Error guardando template: " + err.message);
+    });
 }
+
 
         // ============================================
         // UTILIDADES

@@ -306,6 +306,45 @@
         // fetch(`/api/templates/${id}`, { method: 'DELETE' })
       }
     }
+    document.addEventListener('DOMContentLoaded', loadTemplates);
+
+function loadTemplates() {
+  fetch('/templates')
+    .then(res => res.json())
+    .then(data => {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = ''; // limpiar tabla
+
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Sin plantillas registradas</td></tr>`;
+        return;
+      }
+
+      data.forEach(t => {
+        const created = new Date(t.created_at).toLocaleString();
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${t.name}</td>
+          <td>${t.placement_strategy || '-'}</td>
+          <td>${created}</td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+          <td>
+            <button class="btn-action view" onclick="viewTemplate(${t.template_id})">👁️</button>
+          </td>`;
+        tbody.appendChild(row);
+      });
+    })
+    .catch(err => {
+      console.error("Error cargando templates:", err);
+    });
+}
+
+
+    
   </script>
 </body>
 </html>
