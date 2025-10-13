@@ -14,7 +14,10 @@
       <p class="subtitle">Ingresa tus credenciales para continuar</p>
     </div>
 
-    <!-- Ocúltalo con CSS por defecto (display:none) -->
+    <!-- Mensaje de éxito (verde) -->
+    <div id="successBox" class="success">✅ Registro exitoso. Ahora puedes iniciar sesión.</div>
+
+    <!-- Mensaje de error (rojo) -->
     <div id="errorBox" class="error">Usuario o contraseña inválidos</div>
 
     <form id="loginForm" action="/auth/login" method="post" autocomplete="on">
@@ -52,21 +55,24 @@
   </div>
 
   <script>
-    (function(){
+    (function () {
       const params = new URLSearchParams(window.location.search);
+      const successBox = document.getElementById('successBox');
+      const errorBox = document.getElementById('errorBox');
+
       // Mostrar error si viene ?error=1
-      if (params.get('error') === '1') {
-        const box = document.getElementById('errorBox');
-        if (box) box.style.display = 'block';
+      if (params.get('error') === '1' && errorBox) {
+        errorBox.style.display = 'block';
       }
-      // Aviso de registro OK
-      if (params.get('registered') === '1') {
-        alert('✅ Registro exitoso. Ahora puedes iniciar sesión.');
+
+      // Mostrar éxito si viene ?registered=1 (persistente)
+      if (params.get('registered') === '1' && successBox) {
+        successBox.style.display = 'block';
       }
     })();
 
     // Prevención de doble envío
-    (function(){
+    (function () {
       const form = document.getElementById('loginForm');
       const btn = document.getElementById('submitBtn');
       if (!form || !btn) return;

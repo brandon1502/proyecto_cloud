@@ -14,6 +14,7 @@ def register(
     full_name: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db)
+
 ):
     _ = create_user(db, email=email, full_name=full_name, password=password)
     # Redirige al login con bandera de registro exitoso

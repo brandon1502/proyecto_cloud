@@ -673,61 +673,49 @@
                 <label>Nombre</label>
                 <input type="text" id="vm-name" placeholder="VM-001">
             </div>
+
             <div class="form-group">
-  <label>RAM (GB)</label>
-  <select id="vm-ram">
-    <option value="" disabled selected>Seleccionar RAM</option>
-    <option value="1">1 GB</option>
-    <option value="2">2 GB</option>
-    <option value="4">4 GB</option>
-    <option value="8">8 GB</option>
-    <option value="16">16 GB</option>
-    <option value="32">32 GB</option>
-  </select>
-</div>
+                <label>Flavour</label>
+                <select id="vm-flavour" onchange="updateFlavourSummary()">
+                    <option value="" disabled selected>Seleccionar Flavour</option>
+                    <option value="mini">mini</option>
+                    <option value="nano">nano</option>
+                    <option value="micro">micro</option>
+                    <option value="small">small</option>
+                    <option value="medium">medium</option>
+                    <option value="large">large</option>
+                    <option value="xlarge">xlarge</option>
+                </select>
+            </div>
 
-<div class="form-group">
-  <label>CPU (vCPUs)</label>
-  <select id="vm-cpu">
-    <option value="" disabled selected>Seleccionar vCPUs</option>
-    <option value="1">1 vCPU</option>
-    <option value="2">2 vCPUs</option>
-    <option value="4">4 vCPUs</option>
-    <option value="8">8 vCPUs</option>
-  </select>
-</div>
+            <div id="flavour-summary" style="display: none; background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-size: 13px; color: #475569; font-weight: 600; margin-bottom: 8px;">📋 Resumen del Flavour:</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <div style="background: white; padding: 8px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">vCPUs</div>
+                        <div id="summary-cpu" style="font-size: 16px; font-weight: 700; color: #1e293b;">-</div>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">RAM</div>
+                        <div id="summary-ram" style="font-size: 16px; font-weight: 700; color: #1e293b;">-</div>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Disco</div>
+                        <div id="summary-disk" style="font-size: 16px; font-weight: 700; color: #1e293b;">-</div>
+                    </div>
+                </div>
+            </div>
 
-<div class="form-group">
-  <label>Disco (GB)</label>
-  <select id="vm-disk">
-    <option value="" disabled selected>Seleccionar Disco</option>
-    <option value="10">10 GB</option>
-    <option value="20">20 GB</option>
-    <option value="40">40 GB</option>
-    <option value="80">80 GB</option>
-    <option value="160">160 GB</option>
-  </select>
-</div>
-
-<div class="form-group">
-  <label>Cores</label>
-  <select id="vm-cores">
-    <option value="" disabled selected>Seleccionar Cores</option>
-    <option value="1">1 Core</option>
-    <option value="2">2 Cores</option>
-    <option value="4">4 Cores</option>
-    <option value="8">8 Cores</option>
-  </select>
-</div>
-
-<div class="form-group">
-  <label>Sistema Operativo</label>
-  <select id="vm-os">
-    <option value="" disabled selected>Seleccionar SO</option>
-    <option value="Ubuntu">Ubuntu</option>
-    <option value="CirrOS">CirrOS</option>
-  </select>
-</div>
+            <div class="form-group">
+                <label>Imagen</label>
+                <select id="vm-image">
+                    <option value="" disabled selected>Seleccionar Imagen</option>
+                    <option value="Ubuntu">Ubuntu</option>
+                    <option value="CirrOS">CirrOS</option>
+                    <option value="Debian">Debian</option>
+                    <option value="CentOS">CentOS</option>
+                </select>
+            </div>
 
             <div class="form-group"> 
     <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;">
@@ -802,6 +790,28 @@ document.getElementById('vm-internet').addEventListener('change', function() {
         let vmConfigs = {}; // Configuraciones de cada VM
         const PC_IMAGE = '/static/images/pc.png';
 
+        // Flavours cargados desde BD
+        let FLAVOURS = {};
+
+        /**
+         * Actualiza el resumen del flavour seleccionado
+         */
+        function updateFlavourSummary() {
+            const flavourSelect = document.getElementById('vm-flavour');
+            const summaryDiv = document.getElementById('flavour-summary');
+            const selectedFlavour = flavourSelect.value;
+
+            if (selectedFlavour && FLAVOURS[selectedFlavour]) {
+                const flavour = FLAVOURS[selectedFlavour];
+                document.getElementById('summary-cpu').textContent = flavour.cpu;
+                document.getElementById('summary-ram').textContent = flavour.ram + ' GB';
+                document.getElementById('summary-disk').textContent = flavour.disk + ' GB';
+                summaryDiv.style.display = 'block';
+            } else {
+                summaryDiv.style.display = 'none';
+            }
+        }
+
 function randomXY() {
   const c = document.getElementById('topology-canvas');
   const w = (c?.clientWidth || 1000);
@@ -861,13 +871,7 @@ function randomXY() {
       smooth: { type: 'continuous' }
     },
     physics: {
-      enabled: true,
-      stabilization: { iterations: 150 },
-      barnesHut: {
-        gravitationalConstant: -2500,
-        springConstant: 0.02,
-        springLength: 180
-      }
+      enabled: false  // ← DESACTIVAMOS la física completamente
     },
     interaction: {
       hover: true,
@@ -889,9 +893,6 @@ function randomXY() {
       }
     }
   });
-
-  // Estabiliza al iniciar para evitar amontonamiento
-  network.stabilize(150);
 }
 
         // ============================================
@@ -918,21 +919,21 @@ function randomXY() {
       x: pos.x,
       y: pos.y,
       fixed: false,
-      physics: true
+      physics: false  // Sin física para que no se mueva automáticamente
     });
 
     vmConfigs[nodeId] = {
       name: label,
-      ram: 4,
+      flavour: 'small',
       cpu: 2,
-      disk: 20,
-      cores: 1,
-      os: 'Ubuntu'
+      ram: 1,
+      disk: 6,
+      image: 'Ubuntu',
+      internet: false
     };
   }
 
   updateStats();
-  network.stabilize(150);
 }
 
 
@@ -1002,7 +1003,7 @@ function randomXY() {
     x: center.x,
     y: center.y,
     fixed: false,
-    physics: true
+    physics: false
   });
   vmConfigs[centerNodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
 
@@ -1020,7 +1021,7 @@ function randomXY() {
       x: center.x + r * Math.cos(theta),
       y: center.y + r * Math.sin(theta),
       fixed: false,
-      physics: true
+      physics: false
     });
 
     edges.add({ id: `edge-${centerNodeId}-${nodeId}`, from: centerNodeId, to: nodeId });
@@ -1028,7 +1029,6 @@ function randomXY() {
   }
 
   updateStats();
-  network.stabilize(150);
 }
 
 
@@ -1056,7 +1056,7 @@ function randomXY() {
       x: center.x + r * Math.cos(theta),
       y: center.y + r * Math.sin(theta),
       fixed: false,
-      physics: true
+      physics: false
     });
 
     nodeIds.push(nodeId);
@@ -1071,7 +1071,6 @@ function randomXY() {
   }
 
   updateStats();
-  network.stabilize(150);
 }
 
         /**
@@ -1093,7 +1092,7 @@ function randomXY() {
       x: p.x,
       y: p.y,
       fixed: false,
-      physics: true
+      physics: false
     });
     nodeIds.push(nodeId);
     vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
@@ -1103,7 +1102,6 @@ function randomXY() {
     if (L < count) edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[L]}`, from: nodeIds[i], to: nodeIds[L] });
     if (R < count) edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[R]}`, from: nodeIds[i], to: nodeIds[R] });
   }
-  network.stabilize(150);
 }
 
         /**
@@ -1122,7 +1120,7 @@ function randomXY() {
       x: p.x,
       y: p.y,
       fixed: false,
-      physics: true
+      physics: false
     });
     nodeIds.push(nodeId);
     vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
@@ -1130,7 +1128,6 @@ function randomXY() {
   for (let i = 0; i < count - 1; i++) {
     edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[i + 1]}`, from: nodeIds[i], to: nodeIds[i + 1] });
   }
-  network.stabilize(150);
 }
 
         /**
@@ -1149,7 +1146,7 @@ function randomXY() {
       x: p.x,
       y: p.y,
       fixed: false,
-      physics: true
+      physics: false
     });
     nodeIds.push(nodeId);
     vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
@@ -1159,7 +1156,6 @@ function randomXY() {
       edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[j]}`, from: nodeIds[i], to: nodeIds[j] });
     }
   }
-  network.stabilize(150);
 }
 
         // ============================================
@@ -1223,11 +1219,22 @@ function randomXY() {
             
             // Llenar el formulario con los valores actuales
             document.getElementById('vm-name').value = config.name;
-            document.getElementById('vm-ram').value = config.ram;
-            document.getElementById('vm-cpu').value = config.cpu;
-            document.getElementById('vm-disk').value = config.disk;
-            document.getElementById('vm-cores').value = config.cores;
-            document.getElementById('vm-os').value = config.os;
+            document.getElementById('vm-flavour').value = config.flavour;
+            document.getElementById('vm-image').value = config.image;
+            document.getElementById('vm-internet').checked = config.internet || false;
+            
+            // Actualizar el estado del switch
+            const status = document.getElementById('internet-status');
+            if (config.internet) {
+                status.textContent = 'ON';
+                status.style.color = '#475569';
+            } else {
+                status.textContent = 'OFF';
+                status.style.color = '#94a3b8';
+            }
+            
+            // Actualizar resumen del flavour
+            updateFlavourSummary();
             
             document.getElementById('vm-config-modal').classList.add('active');
         }
@@ -1246,13 +1253,23 @@ function randomXY() {
         function saveVMConfig() {
             if (!selectedNodeId) return;
             
+            const selectedFlavour = document.getElementById('vm-flavour').value;
+            
+            if (!selectedFlavour || !FLAVOURS[selectedFlavour]) {
+                alert('⚠️ Por favor selecciona un flavour');
+                return;
+            }
+            
+            const flavourData = FLAVOURS[selectedFlavour];
+            
             const config = {
                 name: document.getElementById('vm-name').value,
-                ram: parseInt(document.getElementById('vm-ram').value),
-                cpu: parseInt(document.getElementById('vm-cpu').value),
-                disk: parseInt(document.getElementById('vm-disk').value),
-                cores: parseInt(document.getElementById('vm-cores').value),
-                os: document.getElementById('vm-os').value
+                flavour: selectedFlavour,
+                cpu: flavourData.cpu,
+                ram: flavourData.ram,
+                disk: flavourData.disk,
+                image: document.getElementById('vm-image').value,
+                internet: document.getElementById('vm-internet').checked
             };
             
             vmConfigs[selectedNodeId] = config;
@@ -1260,11 +1277,13 @@ function randomXY() {
             // Actualizar etiqueta del nodo
             nodes.update({
                 id: selectedNodeId,
-                label: `${config.name}\n${config.os}`,
+                label: `${config.name}\n${config.image}`,
                 title: `${config.name}\n` +
-                       `RAM: ${config.ram}GB | CPU: ${config.cpu}v\n` +
-                       `Disco: ${config.disk}GB | Cores: ${config.cores}\n` +
-                       `OS: ${config.os}`
+                       `Flavour: ${config.flavour}\n` +
+                       `CPU: ${config.cpu}v | RAM: ${config.ram}GB\n` +
+                       `Disco: ${config.disk}GB\n` +
+                       `Imagen: ${config.image}\n` +
+                       `Internet: ${config.internet ? 'Sí' : 'No'}`
             });
             
             closeVMConfigModal();
@@ -1276,11 +1295,12 @@ function randomXY() {
         function getDefaultConfig(name) {
             return {
                 name: name,
-                ram: 4,
+                flavour: 'small',
                 cpu: 2,
-                disk: 20,
-                cores: 1,
-                os: 'Ubuntu'
+                ram: 1,
+                disk: 6,
+                image: 'Ubuntu',
+                internet: false
             };
         }
 
@@ -1350,20 +1370,32 @@ function randomXY() {
       // Nodos
       if (Array.isArray(topo.nodes)) {
         topo.nodes.forEach(n => {
-          const cfg = recursos[n.id] ? {
-            name: recursos[n.id].name,
-            ram: recursos[n.id].ram_gb,
-            cpu: recursos[n.id].vcpu,
-            disk: recursos[n.id].disk_gb,
-            cores: recursos[n.id].cores,
-            os: recursos[n.id].os
-          } : getDefaultConfig(n.label || n.id);
+          let cfg;
+          
+          if (recursos[n.id]) {
+            // Si viene con recursos del JSON importado
+            const rec = recursos[n.id];
+            cfg = {
+              name: rec.name || n.label || n.id,
+              flavour: rec.flavour || 'small',
+              cpu: rec.cpu || rec.vcpu || 2,
+              ram: rec.ram || rec.ram_gb || 1,
+              disk: rec.disk || rec.disk_gb || 6,
+              image: rec.image || rec.os || 'Ubuntu',
+              internet: rec.internet || false
+            };
+          } else {
+            // Configuración por defecto
+            cfg = getDefaultConfig(n.label || n.id);
+          }
 
           vmConfigs[n.id] = cfg;
 
           const title =
-            `${cfg.name}\nRAM: ${cfg.ram}GB | CPU: ${cfg.cpu}v\n` +
-            `Disco: ${cfg.disk}GB | Cores: ${cfg.cores}\nOS: ${cfg.os}`;
+            `${cfg.name}\nFlavour: ${cfg.flavour}\n` +
+            `CPU: ${cfg.cpu}v | RAM: ${cfg.ram}GB\n` +
+            `Disco: ${cfg.disk}GB\nImagen: ${cfg.image}\n` +
+            `Internet: ${cfg.internet ? 'Sí' : 'No'}`;
 
           // Usa posición del JSON si viene; si no, random
           const p = (n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number')
@@ -1379,7 +1411,7 @@ function randomXY() {
             x: p.x,
             y: p.y,
             fixed: false,
-            physics: true   // ← activamos física para que se integre al layout
+            physics: false  // Sin física para que no se mueva
           });
 
           const m = String(n.id).match(/vm-(\d+)/);
@@ -1403,7 +1435,6 @@ function randomXY() {
       }
 
       updateStats();
-      network.stabilize(150);
       alert('✅ Topología importada exitosamente');
     } catch (err) {
       console.error('Error al importar:', err);
@@ -1459,43 +1490,51 @@ function closeSaveModal() {
  * Confirma y guarda la topología con los datos del modal
  */
 function confirmSaveTopology() {
-    const sliceName = document.getElementById('save-slice-name').value.trim();
-    const description = document.getElementById('save-description').value.trim();
-    
-    if (!sliceName) {
-        alert('⚠️ Por favor ingresa el nombre del slice');
-        return;
+  const sliceName = document.getElementById('save-slice-name').value.trim();
+  const description = document.getElementById('save-description').value.trim();
+
+  if (!sliceName) {
+    alert('⚠️ Por favor ingresa el nombre del slice');
+    return;
+  }
+
+  const topologia = { nodes: nodes.get(), edges: edges.get() };
+  const recursos  = vmConfigs;
+
+  const payload = {
+    slice_name: sliceName,
+    description: description,
+    topologia: topologia,
+    recursos: recursos
+  };
+
+  fetch("/templates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",                // 🔴 IMPORTANTE: envía la cookie de sesión
+    body: JSON.stringify(payload)
+  })
+  .then(async (res) => {
+    if (!res.ok) {
+      // intenta leer detalle de FastAPI
+      let msg = "Error al guardar template";
+      try {
+        const data = await res.json();
+        if (data?.detail) msg = data.detail;
+      } catch (_) {}
+      throw new Error(msg);
     }
-
-    const topologia = { nodes: nodes.get(), edges: edges.get() };
-    const recursos = vmConfigs;
-
-    const payload = {
-        slice_name: sliceName,
-        description: description,
-        topologia: topologia,
-        recursos: recursos
-    };
-
-    fetch("/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    })
-    .then(res => {
-        if (!res.ok) throw new Error("Error al guardar template");
-        return res.json();
-    })
-    .then(data => {
-        alert("✅ Template guardado correctamente");
-        window.location.href = "/plantillas";
-    })
-    .catch(err => {
-        console.error(err);
-        alert("❌ Error guardando template: " + err.message);
-    });
+    return res.json();
+  })
+  .then((data) => {
+    alert("✅ Template guardado correctamente");
+    window.location.href = "/plantillas";  // redirige
+  })
+  .catch((err) => {
+    console.error(err);
+    alert("❌ Error guardando template: " + err.message);
+  });
 }
-
 
         // ============================================
         // UTILIDADES
@@ -1513,8 +1552,87 @@ function confirmSaveTopology() {
   if (vmBadge) vmBadge.textContent = n;
   if (edgeBadge) edgeBadge.textContent = e;
 }
+// Mapa global (ya lo tienes declarado)
+  // let FLAVOURS = {};
+
+  async function loadFlavours() {
+    try {
+      const res = await fetch('/flavours', {
+        credentials: 'include' // <- envía el cookie de sesión
+      });
+
+      if (!res.ok) {
+        console.error('No se pudieron cargar los flavours:', res.status);
+        return;
+      }
+
+      const data = await res.json(); // [{flavour_id, name, vcpu, ram_gb, disk_gb}, ...]
+
+      // Rellenar mapa y <select>
+      FLAVOURS = {};
+      const sel = document.getElementById('vm-flavour');
+
+      // Opcional: reiniciar opciones y dejar un placeholder
+      sel.innerHTML = '<option value="" disabled selected>Seleccionar Flavour</option>';
+
+      data.forEach(f => {
+        FLAVOURS[f.name] = {
+          cpu: f.vcpu,
+          ram: Number(f.ram_gb),
+          disk: Number(f.disk_gb)
+        };
+        const opt = document.createElement('option');
+        opt.value = f.name;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+      });
+
+      // Si ya había uno seleccionado, refresca el resumen
+      updateFlavourSummary();
+    } catch (e) {
+      console.error('Error cargando flavours:', e);
+    }
+  }
+
+  // Lánzalo al cargar la página
+  document.addEventListener('DOMContentLoaded', () => {
+    initNetwork();
+    updateStats();
+    loadFlavours();   // <- AQUÍ
+  });
+
+  // Tu función ya existente; solo asegúrate que usa las claves cpu/ram/disk
+  function updateFlavourSummary() {
+    const flavourSelect = document.getElementById('vm-flavour');
+    const summaryDiv = document.getElementById('flavour-summary');
+    const selectedFlavour = flavourSelect.value;
+
+    if (selectedFlavour && FLAVOURS[selectedFlavour]) {
+      const f = FLAVOURS[selectedFlavour];
+      document.getElementById('summary-cpu').textContent = f.cpu;
+      document.getElementById('summary-ram').textContent = f.ram + ' GB';
+      document.getElementById('summary-disk').textContent = f.disk + ' GB';
+      summaryDiv.style.display = 'block';
+    } else {
+      summaryDiv.style.display = 'none';
+    }
+  }
+
+
+
+
+
+
+
     </script>
+
+
+
+
 </body>
 
-</html>
 
+
+
+
+</html>

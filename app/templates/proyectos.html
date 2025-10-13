@@ -1,296 +1,149 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Proyectos - Orquestador Privado</title>
-  <link rel="stylesheet" href="../static/css/proyectos.css">
+  <link rel="stylesheet" href="../static/css/proyectos.css" />
   <style>
-    /* Modal Styles */
+    /* ===== Modal ===== */
     .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(30, 41, 59, 0.6);
-      backdrop-filter: blur(4px);
-      z-index: 1000;
-      animation: fadeIn 0.3s ease;
+      display:none; position:fixed; inset:0;
+      background-color:rgba(30,41,59,.6); backdrop-filter:blur(4px);
+      z-index:1000; animation:fadeIn .3s ease;
     }
-
-    .modal-overlay.active {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
+    .modal-overlay.active { display:flex; justify-content:center; align-items:center; }
     .modal-container {
-      background: white;
-      border-radius: 15px;
-      width: 90%;
-      max-width: 520px;
-      box-shadow: 0 20px 60px rgba(100, 116, 139, 0.25);
-      animation: slideUp 0.3s ease;
-      max-height: 90vh;
-      overflow-y: auto;
-      border: 2px solid #cbd5e1;
-      scrollbar-width: none; /* Firefox */
-      -ms-overflow-style: none; /* IE and Edge */
+      background:#fff; border-radius:15px; width:90%; max-width:620px;
+      box-shadow:0 20px 60px rgba(100,116,139,.25);
+      animation:slideUp .3s ease; max-height:90vh; overflow-y:auto;
+      border:2px solid #cbd5e1; scrollbar-width:none; -ms-overflow-style:none;
+    }
+    .modal-container::-webkit-scrollbar{display:none}
+    .modal-header{ padding:28px 28px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc;}
+    .modal-header h2{ margin:0; font-size:26px; color:#1e293b; font-weight:600;}
+    .modal-body{ padding:28px;}
+    .form-group{ margin-bottom:26px;}
+    .form-group:last-child{ margin-bottom:0;}
+    .form-group label{ display:block; margin-bottom:10px; font-weight:600; color:#1e293b; font-size:15px;}
+
+    /* Zona de disponibilidad (cards con radio) */
+    .zone-options{ display:grid; gap:14px; margin-top:12px;}
+    .zone-option{
+      display:flex; align-items:center; padding:18px; border:2px solid #e2e8f0;
+      border-radius:10px; cursor:pointer; transition:.2s; background:#fff;
+    }
+    .zone-option:hover{ border-color:#60a5fa; background:#f8fafc; transform:translateY(-2px); box-shadow:0 4px 12px rgba(100,116,139,.1);}
+    .zone-option input[type="radio"]{ margin-right:14px; width:20px; height:20px; cursor:pointer; accent-color:#60a5fa; }
+    .zone-option.selected{
+      border-color:#60a5fa; background:linear-gradient(90deg,rgba(125,211,252,.15) 0%, rgba(96,165,250,.05) 100%);
+      box-shadow:0 2px 12px rgba(96,165,250,.2);
+    }
+    .zone-info{ flex:1;}
+    .zone-title{ font-weight:600; color:#1e293b; margin-bottom:4px; font-size:15px;}
+    .zone-description{ font-size:13px; color:#64748b;}
+
+    .modal-footer{ padding:20px 28px; border-top:1px solid #e2e8f0; background:#f8fafc; display:flex; justify-content:flex-end; gap:12px;}
+    .btn-modal{
+      padding:12px 24px; border-radius:10px; font-weight:600; font-size:15px; cursor:pointer;
+      transition:.3s; border:2px solid transparent; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .btn-cancel{ background:#fff; color:#475569; border-color:#e2e8f0;}
+    .btn-cancel:hover{ background:#f1f5f9; border-color:#cbd5e1;}
+    .btn-deploy{ background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%); color:#fff; box-shadow:0 2px 12px rgba(96,165,250,.3);}
+    .btn-deploy:hover{ background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%); transform:translateY(-2px); box-shadow:0 4px 16px rgba(96,165,250,.4);}
+    .btn-deploy:disabled{ background:#cbd5e1; cursor:not-allowed; box-shadow:none; transform:none;}
+
+    /* ====== Selector (dropdown) de plantillas ====== */
+    .select {
+      position: relative;
+    }
+    .select-trigger {
+      display:flex; align-items:center; justify-content:space-between;
+      width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:10px;
+      background:#fff; cursor:pointer; transition:.2s; font-weight:600; color:#0f172a;
+    }
+    .select-trigger:hover { border-color:#60a5fa; background:#f8fafc; }
+    .select-placeholder { color:#64748b; font-weight:500; }
+    .select-caret { margin-left:12px; font-size:14px; color:#475569; }
+    .select-menu {
+      position:absolute; z-index:1010; top:calc(100% + 8px); left:0; right:0;
+      background:#fff; border:2px solid #e2e8f0; border-radius:12px;
+      box-shadow:0 14px 40px rgba(15,23,42,.15); max-height:280px; overflow:auto; display:none;
+    }
+    .select.open .select-menu { display:block; }
+    .select-search {
+      padding:10px 12px; border-bottom:1px solid #e2e8f0; background:#f8fafc;
+    }
+    .select-search input {
+      width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; outline:none;
+    }
+    .select-section { padding:8px; }
+    .select-item {
+      padding:10px 12px; border-radius:8px; cursor:pointer; transition:.15s; display:flex; flex-direction:column; gap:6px;
+      border:2px solid transparent;
+    }
+    .select-item:hover { background:#f1f5f9; border-color:#e2e8f0; }
+    .select-item[aria-selected="true"] { background:linear-gradient(90deg, rgba(125,211,252,.10), rgba(96,165,250,.04)); border-color:#60a5fa; }
+    .item-title { font-weight:700; color:#0f172a; font-size:14px; }
+    .item-meta { display:flex; flex-wrap:wrap; gap:6px; font-size:12px; color:#475569; }
+    .meta-badge { background:#eef2ff; color:#3730a3; padding:3px 8px; border-radius:999px; font-weight:600; }
+
+    .select-empty {
+      padding:14px; color:#64748b; font-size:13px;
     }
 
-    .modal-container::-webkit-scrollbar {
-      display: none; /* Chrome, Safari, Opera */
+    /* Resumen de plantilla seleccionada */
+    .tpl-summary {
+      margin-top:10px; display:none;
+      padding:12px; border:2px dashed #cbd5e1; border-radius:10px; background:#f8fafc;
     }
+    .tpl-summary h4 { margin:0 0 8px; font-size:14px; color:#0f172a; }
+    .tpl-summary .badges { display:flex; flex-wrap:wrap; gap:8px; }
+    .tpl-summary .badge { background:#ecfeff; color:#0369a1; padding:4px 8px; border-radius:999px; font-weight:600; font-size:12.5px; }
 
-    .modal-header {
-      padding: 28px 28px 20px;
-      border-bottom: 1px solid #e2e8f0;
-      background: #f8fafc;
-    }
-
-    .modal-header h2 {
-      margin: 0;
-      font-size: 26px;
-      color: #1e293b;
-      font-weight: 600;
-    }
-
-    .modal-body {
-      padding: 28px;
-    }
-
-    .form-group {
-      margin-bottom: 26px;
-    }
-
-    .form-group:last-child {
-      margin-bottom: 0;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 10px;
-      font-weight: 600;
-      color: #1e293b;
-      font-size: 15px;
-    }
-
-    .form-select {
-      width: 100%;
-      padding: 13px 16px;
-      border: 2px solid #e2e8f0;
-      border-radius: 10px;
-      font-size: 15px;
-      color: #1e293b;
-      background-color: white;
-      transition: all 0.2s;
-      cursor: pointer;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    .form-select:hover {
-      border-color: #cbd5e1;
-      background: #f8fafc;
-    }
-
-    .form-select:focus {
-      outline: none;
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
-    }
-
-    .zone-options {
-      display: grid;
-      gap: 14px;
-      margin-top: 12px;
-    }
-
-    .zone-option {
-      display: flex;
-      align-items: center;
-      padding: 18px;
-      border: 2px solid #e2e8f0;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-      background: white;
-    }
-
-    .zone-option:hover {
-      border-color: #60a5fa;
-      background: #f8fafc;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
-    }
-
-    .zone-option input[type="radio"] {
-      margin-right: 14px;
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      accent-color: #60a5fa;
-    }
-
-    .zone-option.selected {
-      border-color: #60a5fa;
-      background: linear-gradient(90deg, rgba(125, 211, 252, 0.15) 0%, rgba(96, 165, 250, 0.05) 100%);
-      box-shadow: 0 2px 12px rgba(96, 165, 250, 0.2);
-    }
-
-    .zone-info {
-      flex: 1;
-    }
-
-    .zone-title {
-      font-weight: 600;
-      color: #1e293b;
-      margin-bottom: 4px;
-      font-size: 15px;
-    }
-
-    .zone-description {
-      font-size: 13px;
-      color: #64748b;
-    }
-
-    .modal-footer {
-      padding: 20px 28px;
-      border-top: 1px solid #e2e8f0;
-      background: #f8fafc;
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-
-    .btn-modal {
-      padding: 12px 24px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 15px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border: 2px solid transparent;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    .btn-cancel {
-      background: white;
-      color: #475569;
-      border-color: #e2e8f0;
-    }
-
-    .btn-cancel:hover {
-      background: #f1f5f9;
-      border-color: #cbd5e1;
-    }
-
-    .btn-deploy {
-      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-      color: white;
-      box-shadow: 0 2px 12px rgba(96, 165, 250, 0.3);
-    }
-
-    .btn-deploy:hover {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(96, 165, 250, 0.4);
-    }
-
-    .btn-deploy:disabled {
-      background: #cbd5e1;
-      cursor: not-allowed;
-      box-shadow: none;
-      transform: none;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    @keyframes slideUp {
-      from {
-        transform: translateY(30px);
-        opacity: 0;
-      }
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
-    }
+    @keyframes fadeIn{ from{opacity:0} to{opacity:1} }
+    @keyframes slideUp{ from{transform:translateY(30px); opacity:0} to{transform:translateY(0); opacity:1} }
   </style>
 </head>
 <body>
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <h2>
-        <div class="logo-icon">🔐</div>
-        <span>Orquestador</span>
-      </h2>
+      <h2><div class="logo-icon">🔐</div><span>Orquestador</span></h2>
       <button class="toggle-btn" id="toggleSidebar">◀</button>
     </div>
 
     <nav class="sidebar-menu">
-      <a href="/home" class="menu-item" id="inicioLink">
-        <span class="menu-icon">🏠</span>
-        <span>Inicio</span>
-      </a>
-      <a href="/plantillas" class="menu-item" id="plantillasLink">
-        <span class="menu-icon">📝</span>
-        <span>Plantillas</span>
-      </a>
-
-      <a href="/projects" class="menu-item active" id="proyectosLink">
-        <span class="menu-icon">📁</span>
-        <span>Proyectos</span>
-      </a>
+      <a href="/home" class="menu-item" id="inicioLink"><span class="menu-icon">🏠</span><span>Inicio</span></a>
+      <a href="/plantillas" class="menu-item" id="plantillasLink"><span class="menu-icon">📝</span><span>Plantillas</span></a>
+      <a href="/projects" class="menu-item active" id="proyectosLink"><span class="menu-icon">📁</span><span>Proyectos</span></a>
     </nav>
 
     <div class="sidebar-footer">
       <div class="divider"></div>
-      <a href="#" class="menu-item" id="changePasswordLink">
-        <span class="menu-icon">🔑</span>
-        <span>Cambiar Contraseña</span>
-      </a>
-      <a href="/auth/logout" class="menu-item" id="logoutLink">
-        <span class="menu-icon">🚪</span>
-        <span>Cerrar Sesión</span>
-      </a>
+      <a href="#" class="menu-item" id="changePasswordLink"><span class="menu-icon">🔑</span><span>Cambiar Contraseña</span></a>
+      <a href="/auth/logout" class="menu-item" id="logoutLink"><span class="menu-icon">🚪</span><span>Cerrar Sesión</span></a>
     </div>
   </aside>
 
-  <!-- Main Content -->
+  <!-- Main -->
   <main class="main-content">
     <div class="page-header">
       <h1>Proyectos</h1>
-      <button class="btn-new" id="newTopologyBtn">
-        <span>➕</span> Desplegar plantilla
-      </button>
+      <button class="btn-new" id="newTopologyBtn"><span>➕</span> Desplegar plantilla</button>
     </div>
 
     <div class="table-container">
       <div class="table-controls">
         <div class="show-entries">
           <span>Mostrar</span>
-          <select id="entriesSelect">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
+          <select id="entriesSelect"><option>10</option><option>25</option><option>50</option><option>100</option></select>
           <span>entradas</span>
         </div>
-        
         <div class="search-box">
           <label>Buscar:</label>
-          <input type="text" id="searchInput" placeholder="Filtrar por nombre...">
+          <input type="text" id="searchInput" placeholder="Filtrar por nombre..."/>
         </div>
       </div>
 
@@ -303,32 +156,11 @@
             <th>Estado</th>
           </tr>
         </thead>
-        <tbody id="tableBody">
-          <tr onclick="window.location.href='/projects/20215433'">
-            <td>TEL141_2025-2_20215433</td>
-            <td>TEL141_2025-2_20215433</td>
-            <td>2025-08-18 06:30:53.730Z</td>
-            <td><span class="status-badge status-running">RUNNING</span></td>
-          </tr>
-          <tr onclick="window.location.href='/projects/20215789'">
-            <td>TEL141_2025-1_20215789</td>
-            <td>Topología de red básica</td>
-            <td>2025-07-15 14:22:10.123Z</td>
-            <td><span class="status-badge status-running">RUNNING</span></td>
-          </tr>
-          <tr onclick="window.location.href='/projects/20214567'">
-            <td>TEL141_2024-2_20214567</td>
-            <td>Proyecto de prueba</td>
-            <td>2025-06-20 09:45:30.456Z</td>
-            <td><span class="status-badge status-stopped">STOPPED</span></td>
-          </tr>
-        </tbody>
+        <tbody id="tableBody"></tbody>
       </table>
 
       <div class="table-footer">
-        <div style="color: #64748b; font-size: 14px;">
-          Mostrando <span id="showingInfo">1 a 3 de 3</span> entradas
-        </div>
+        <div style="color:#64748b; font-size:14px;">Mostrando <span id="showingInfo">0 a 0 de 0</span> entradas</div>
         <div class="pagination">
           <button id="prevBtn">Anterior</button>
           <button class="active">1</button>
@@ -338,48 +170,56 @@
     </div>
   </main>
 
-  <!-- Modal Desplegar Topología -->
+  <!-- Modal -->
   <div class="modal-overlay" id="deployModal">
     <div class="modal-container">
-      <div class="modal-header">
-        <h2>Desplegar Topología</h2>
-      </div>
-      
+      <div class="modal-header"><h2>Desplegar Topología</h2></div>
+
       <div class="modal-body">
-        <!-- Seleccionar Plantilla -->
+        <!-- Plantillas del usuario (selector) -->
         <div class="form-group">
-          <label for="templateSelect">Seleccionar Plantilla</label>
-          <select id="templateSelect" class="form-select">
-            <option value="">-- Seleccione una plantilla --</option>
-            <option value="template1">Plantilla Básica</option>
-            <option value="template2">Plantilla Red Empresarial</option>
-            <option value="template3">Plantilla Alta Disponibilidad</option>
-            <option value="template4">Plantilla Balanceo de Carga</option>
-          </select>
+          <label for="templateSelectTrigger">Seleccionar Plantilla</label>
+          <div class="select" id="templateSelect" aria-haspopup="listbox" aria-expanded="false">
+            <button class="select-trigger" id="templateSelectTrigger" type="button" aria-controls="templateSelectMenu">
+              <span class="select-value"><span class="select-placeholder">Elige una plantilla…</span></span>
+              <span class="select-caret">▾</span>
+            </button>
+            <div class="select-menu" id="templateSelectMenu" role="listbox" tabindex="-1">
+              <div class="select-search">
+                <input id="templateSearch" type="text" placeholder="Buscar plantilla…" aria-label="Buscar plantilla">
+              </div>
+              <div class="select-section" id="templateItems"></div>
+              <div class="select-empty" id="templateEmptyHint" style="display:none;">No tienes plantillas todavía.</div>
+            </div>
+          </div>
+
+          <!-- Resumen visible al elegir -->
+          <div class="tpl-summary" id="templateSummary">
+            <h4>Resumen de plantilla seleccionada</h4>
+            <div class="badges" id="templateSummaryBadges"></div>
+          </div>
         </div>
 
-        <!-- Zona de Disponibilidad -->
+        <!-- Zona -->
         <div class="form-group">
           <label>Zona de Disponibilidad</label>
           <div class="zone-options">
             <label class="zone-option" for="zone1">
-              <input type="radio" name="zone" id="zone1" value="zone1">
+              <input type="radio" name="zone" id="zone1" value="zone1"/>
               <div class="zone-info">
                 <div class="zone-title">Zona 1</div>
                 <div class="zone-description">1 servidor disponible</div>
               </div>
             </label>
-
             <label class="zone-option" for="zone2">
-              <input type="radio" name="zone" id="zone2" value="zone2">
+              <input type="radio" name="zone" id="zone2" value="zone2"/>
               <div class="zone-info">
                 <div class="zone-title">Zona 2</div>
                 <div class="zone-description">2 servidores disponibles</div>
               </div>
             </label>
-
             <label class="zone-option" for="zone3">
-              <input type="radio" name="zone" id="zone3" value="zone3">
+              <input type="radio" name="zone" id="zone3" value="zone3"/>
               <div class="zone-info">
                 <div class="zone-title">Zona 3</div>
                 <div class="zone-description">4 servidores disponibles</div>
@@ -397,106 +237,346 @@
   </div>
 
   <script>
-    // Toggle sidebar
-    const toggleBtn = document.getElementById('toggleSidebar');
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-    
-    toggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
-      mainContent.classList.toggle('expanded');
-      toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
-    });
+  /* ===== Sidebar ===== */
+  const toggleBtn = document.getElementById('toggleSidebar');
+  const sidebar = document.querySelector('.sidebar');
+  const mainContent = document.querySelector('.main-content');
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
+    toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+  });
 
-    // Modal functionality
-    const modal = document.getElementById('deployModal');
-    const newTopologyBtn = document.getElementById('newTopologyBtn');
-    const cancelBtn = document.getElementById('cancelBtn');
-    const deployBtn = document.getElementById('deployBtn');
-    const templateSelect = document.getElementById('templateSelect');
-    const zoneRadios = document.querySelectorAll('input[name="zone"]');
-    const zoneOptions = document.querySelectorAll('.zone-option');
+  /* ===== Tabla ===== */
+  const tableBody = document.getElementById('tableBody');
+  const showingInfo = document.getElementById('showingInfo');
+  function updateShowingInfo() {
+    const rows = tableBody.querySelectorAll('tr');
+    const visible = Array.from(rows).filter(r => r.style.display !== 'none').length;
+    showingInfo.textContent = visible ? `1 a ${visible} de ${visible}` : `0 a 0 de 0`;
+  }
 
-    // Abrir modal
-    newTopologyBtn.addEventListener('click', () => {
-      modal.classList.add('active');
-    });
+  /* ===== Modal ===== */
+  const modal = document.getElementById('deployModal');
+  const newTopologyBtn = document.getElementById('newTopologyBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const deployBtn = document.getElementById('deployBtn');
 
-    // Cerrar modal
-    cancelBtn.addEventListener('click', () => {
-      modal.classList.remove('active');
-      resetForm();
-    });
+  // Template selector elements
+  const templateSelect = document.getElementById('templateSelect');
+  const templateSelectTrigger = document.getElementById('templateSelectTrigger');
+  const templateSelectMenu = document.getElementById('templateSelectMenu');
+  const templateItems = document.getElementById('templateItems');
+  const templateSearch = document.getElementById('templateSearch');
+  const templateEmptyHint = document.getElementById('templateEmptyHint');
 
-    // Cerrar al hacer clic fuera del modal
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('active');
-        resetForm();
-      }
-    });
+  // Summary
+  const tplSummary = document.getElementById('templateSummary');
+  const tplSummaryBadges = document.getElementById('templateSummaryBadges');
 
-    // Manejar selección de zona
-    zoneOptions.forEach(option => {
-      option.addEventListener('click', () => {
-        zoneOptions.forEach(opt => opt.classList.remove('selected'));
-        option.classList.add('selected');
-        validateForm();
-      });
-    });
+  // Zones
+  const zoneRadios = document.querySelectorAll('input[name="zone"]');
+  const zoneOptions = document.querySelectorAll('.zone-option');
 
-    // Validar formulario
-    templateSelect.addEventListener('change', validateForm);
-    zoneRadios.forEach(radio => {
-      radio.addEventListener('change', validateForm);
-    });
+  // Cache
+  const templatesById = new Map();
+  let selectedTemplateId = null;
 
-    function validateForm() {
-      const templateSelected = templateSelect.value !== '';
-      const zoneSelected = Array.from(zoneRadios).some(radio => radio.checked);
-      deployBtn.disabled = !(templateSelected && zoneSelected);
-    }
+  // Abrir modal y cargar plantillas
+  newTopologyBtn.addEventListener('click', async () => {
+    await loadUserTemplates();
+    openModal();
+    validateForm();
+  });
 
-    function resetForm() {
-      templateSelect.value = '';
-      zoneRadios.forEach(radio => radio.checked = false);
+  function openModal() {
+    modal.classList.add('active');
+    document.addEventListener('keydown', escToClose);
+  }
+  function closeModal() {
+    modal.classList.remove('active');
+    document.removeEventListener('keydown', escToClose);
+    resetForm();
+  }
+  function escToClose(e){ if(e.key === 'Escape') closeModal(); }
+
+  // Cerrar modal
+  cancelBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  function resetForm() {
+    selectedTemplateId = null;
+    setSelectValue(null);
+    zoneRadios.forEach(r => r.checked = false);
+    zoneOptions.forEach(opt => opt.classList.remove('selected'));
+    tplSummary.style.display = 'none';
+    tplSummaryBadges.innerHTML = '';
+    deployBtn.disabled = true;
+  }
+
+  // Selección de zona (estética)
+  zoneOptions.forEach(option => {
+    option.addEventListener('click', () => {
       zoneOptions.forEach(opt => opt.classList.remove('selected'));
-      deployBtn.disabled = true;
-    }
-
-    // Desplegar topología
-    deployBtn.addEventListener('click', () => {
-      const template = templateSelect.value;
-      const zone = document.querySelector('input[name="zone"]:checked').value;
-      
-      console.log('Desplegando:', { template, zone });
-      
-      // Aquí puedes hacer la petición al backend
-      // Por ejemplo:
-      // fetch('/projects/deploy', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ template, zone })
-      // })
-      // .then(response => response.json())
-      // .then(data => {
-      //   window.location.href = `/projects/${data.id}`;
-      // });
-      
-      alert(`Desplegando plantilla: ${template} en ${zone}`);
-      modal.classList.remove('active');
-      resetForm();
+      option.classList.add('selected');
+      const radio = option.querySelector('input[type="radio"]');
+      if (radio) radio.checked = true;
+      validateForm();
     });
+  });
 
-    // Search functionality
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      const searchTerm = e.target.value.toLowerCase();
-      const rows = document.querySelectorAll('#tableBody tr');
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
+  // ===== Dropdown behavior =====
+  function toggleSelect(open) {
+    const shouldOpen = typeof open === 'boolean' ? open : !templateSelect.classList.contains('open');
+    templateSelect.classList.toggle('open', shouldOpen);
+    templateSelect.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    if (shouldOpen) {
+      templateSearch.value = '';
+      filterItems('');
+      templateSearch.focus();
+    }
+  }
+  templateSelectTrigger.addEventListener('click', () => toggleSelect());
+
+  // Cerrar si clic fuera
+  document.addEventListener('click', (e) => {
+    if (!templateSelect.contains(e.target)) toggleSelect(false);
+  });
+
+  // Búsqueda
+  templateSearch.addEventListener('input', (e) => filterItems(e.target.value.trim().toLowerCase()));
+  function filterItems(term) {
+    const items = templateItems.querySelectorAll('.select-item');
+    let visibleCount = 0;
+    items.forEach(it => {
+      const text = it.dataset.search || '';
+      const show = text.includes(term);
+      it.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+    templateEmptyHint.style.display = (templatesById.size === 0 || visibleCount === 0) ? 'block' : 'none';
+  }
+
+  function setSelectValue(tpl) {
+    const valueSpan = templateSelectTrigger.querySelector('.select-value');
+    if (!tpl) {
+      valueSpan.innerHTML = '<span class="select-placeholder">Elige una plantilla…</span>';
+      tplSummary.style.display = 'none';
+      return;
+    }
+    valueSpan.textContent = tpl.name;
+    const meta = [
+      `${tpl.vm_count ?? 0} VMs`,
+      `${tpl.sum_vcpu ?? 0} vCPU`,
+      `${Number(tpl.sum_ram_gb ?? 0).toFixed(2)} GB RAM`,
+      `${Number(tpl.sum_disk_gb ?? 0).toFixed(2)} GB Disco`
+    ];
+    tplSummaryBadges.innerHTML = meta.map(m => `<span class="badge">${m}</span>`).join('');
+    tplSummary.style.display = 'block';
+  }
+
+  // Validación
+  function validateForm() {
+    const tplSelected = !!selectedTemplateId;
+    const zoneSelected = Array.from(zoneRadios).some(r => r.checked);
+    deployBtn.disabled = !(tplSelected && zoneSelected);
+  }
+
+  // Cargar plantillas del usuario
+  async function loadUserTemplates() {
+    deployBtn.disabled = true;
+    templatesById.clear();
+    templateItems.innerHTML = '';
+    selectedTemplateId = null;
+    setSelectValue(null);
+    templateEmptyHint.style.display = 'none';
+
+    try {
+      const res = await fetch('/templates', { credentials: 'include' });
+      if (!res.ok) throw new Error('No se pudieron cargar las plantillas');
+      const data = await res.json();
+
+      if (!data.length) {
+        templateEmptyHint.style.display = 'block';
+        return;
+      }
+
+      data.forEach(t => {
+        const id = String(t.template_id);
+        templatesById.set(id, t);
+
+        const meta = [
+          `${t.vm_count ?? 0} VMs`,
+          `${t.sum_vcpu ?? 0} vCPU`,
+          `${Number(t.sum_ram_gb ?? 0).toFixed(2)} GB RAM`,
+          `${Number(t.sum_disk_gb ?? 0).toFixed(2)} GB Disco`
+        ];
+
+        const item = document.createElement('div');
+        item.className = 'select-item';
+        item.setAttribute('role', 'option');
+        item.setAttribute('tabindex', '0');
+        item.dataset.id = id;
+        item.dataset.search = `${(t.name || '').toLowerCase()} ${meta.join(' ').toLowerCase()}`;
+        item.innerHTML = `
+          <span class="item-title">${t.name}</span>
+          <div class="item-meta">
+            ${meta.map(m => `<span class="meta-badge">${m}</span>`).join('')}
+          </div>
+        `;
+
+        function choose() {
+          selectedTemplateId = id;
+          Array.from(templateItems.children).forEach(el => el.setAttribute('aria-selected', String(el.dataset.id === id)));
+          setSelectValue(t);
+          toggleSelect(false);
+          validateForm();
+        }
+        item.addEventListener('click', choose);
+        item.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); }
+        });
+
+        templateItems.appendChild(item);
+      });
+    } catch (e) {
+      console.error(e);
+      alert('❌ Error cargando tus plantillas');
+    }
+  }
+
+  // ====== Desplegar: guardar en DB (/slices) ======
+  deployBtn.addEventListener('click', async () => {
+    const tplId = selectedTemplateId;
+    const zone = document.querySelector('input[name="zone"]:checked')?.value || '';
+    const tpl = templatesById.get(String(tplId));
+    if (!tpl) return;
+
+    // nombre del slice: <nombre-plantilla>-YYYYMMDDHHMMSS
+    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
+    const sliceName = `${tpl.name}-${stamp}`.slice(0, 150); // límite por esquema
+
+    const payload = {
+      template_id: Number(tplId),
+      az_hint: zone,          // 'zone1' / 'zone2' / 'zone3' (tu backend lo resuelve)
+      name: sliceName
+      // No mandamos nada más: el backend deja NULL los opcionales
+    };
+
+    deployBtn.disabled = true;
+    const oldText = deployBtn.textContent;
+    deployBtn.textContent = 'Desplegando…';
+
+    try {
+      const res = await fetch('/slices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',            // envía la cookie de sesión
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const msg = await res.text().catch(() => '');
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+
+      const slice = await res.json();
+
+      const createdAt = slice.created_at
+        ? new Date(slice.created_at).toLocaleString()
+        : new Date().toLocaleString();
+
+      const desc = tpl.description
+        ? `${tpl.description} · ${zone.toUpperCase()}`
+        : `Zona: ${zone.toUpperCase()}`;
+
+      addProjectRow({
+        id: slice.slice_id,                                   // id real en DB
+        name: slice.name,                                     // nombre guardado
+        description: desc,
+        createdAt,
+        status: (slice.status || 'PENDING').toUpperCase()
+      });
+
+      alert('✅ Despliegue registrado en la base de datos');
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error al desplegar: ' + (err?.message || 'desconocido'));
+    } finally {
+      deployBtn.disabled = false;
+      deployBtn.textContent = oldText;
+    }
+  });
+
+  // Tabla: agregar fila
+  function addProjectRow({ id, name, description, createdAt, status }) {
+    const tr = document.createElement('tr');
+    tr.onclick = () => window.location.href = `/projects/${id}`;
+    tr.innerHTML = `
+      <td>${name}</td>
+      <td>${description || '-'}</td>
+      <td>${createdAt}</td>
+      <td><span class="status-badge ${statusClass(status)}">${status}</span></td>
+    `;
+    tableBody.appendChild(tr);
+    updateShowingInfo();
+  }
+  function statusClass(status) {
+    if (status === 'RUNNING') return 'status-running';
+    if (status === 'STOPPED') return 'status-stopped';
+    return 'status-running'; // PENDING -> estilo parecido a running
+  }
+
+  // Search tabla
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    const rows = tableBody.querySelectorAll('tr');
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(term) ? '' : 'none';
+    });
+    updateShowingInfo();
+  });
+
+  // Tabla vacía al inicio
+  document.addEventListener('DOMContentLoaded', () => {
+    tableBody.innerHTML = '';
+    updateShowingInfo();
+    loadSlices();
+  });
+
+async function loadSlices() {
+  try {
+    // pide tus proyectos/slices del usuario
+    const res = await fetch('/slices', { credentials: 'include' });
+    if (!res.ok) throw new Error('No se pudieron cargar los despliegues');
+    const data = await res.json(); // [{slice_id, name, status, created_at, description}, ...]
+
+    // limpia tabla
+    tableBody.innerHTML = '';
+
+    data.forEach(s => {
+      const createdAt = s.created_at ? new Date(s.created_at).toLocaleString() : '-';
+      addProjectRow({
+        id: s.slice_id,
+        name: s.name,
+        description: s.description || '-',
+        createdAt,
+        status: (s.status || 'PENDING').toUpperCase(),
       });
     });
-  </script>
+
+    updateShowingInfo();
+  } catch (e) {
+    console.error(e);
+    alert('❌ Error cargando tus proyectos');
+  }
+}
+
+
+
+</script>
+
 </body>
 </html>

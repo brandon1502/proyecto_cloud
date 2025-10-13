@@ -1,21 +1,20 @@
-
 *{margin:0;padding:0;box-sizing:border-box}
 body{
-font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-background:linear-gradient(135deg,#f0f4f8 0%,#e8eef5 100%);
-min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;
+  font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+  background:linear-gradient(135deg,#f0f4f8 0%,#e8eef5 100%);
+  min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;
 }
 .container{
-background:#fff;backdrop-filter:blur(10px);border-radius:20px;padding:50px 40px;
-box-shadow:0 10px 40px rgba(100,116,139,.15);width:100%;max-width:420px;animation:slideUp .5s ease;
-border:1px solid #e2e8f0;
+  background:#fff;backdrop-filter:blur(10px);border-radius:20px;padding:50px 40px;
+  box-shadow:0 10px 40px rgba(100,116,139,.15);width:100%;max-width:420px;animation:slideUp .5s ease;
+  border:1px solid #e2e8f0;
 }
 @keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
 .logo{text-align:center;margin-bottom:40px}
 .logo-icon{
-width:70px;height:70px;background:linear-gradient(135deg,#7dd3fc 0%,#60a5fa 100%);
-border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;
-font-size:32px;color:#fff;animation:pulse 2s infinite;box-shadow:0 4px 15px rgba(96,165,250,.3)
+  width:70px;height:70px;background:linear-gradient(135deg,#7dd3fc 0%,#60a5fa 100%);
+  border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;
+  font-size:32px;color:#fff;animation:pulse 2s infinite;box-shadow:0 4px 15px rgba(96,165,250,.3)
 }
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 h1{color:#1e293b;font-size:28px;text-align:center;margin-bottom:10px}
@@ -23,7 +22,7 @@ h1{color:#1e293b;font-size:28px;text-align:center;margin-bottom:10px}
 .form-group{margin-bottom:25px;position:relative}
 label{display:block;margin-bottom:8px;color:#475569;font-weight:500;font-size:14px}
 input{
-width:100%;padding:15px 20px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;transition:.3s;background:#fff
+  width:100%;padding:15px 20px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;transition:.3s;background:#fff
 }
 input:focus{outline:none;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.1)}
 input:hover{border-color:#cbd5e1}
@@ -31,13 +30,23 @@ input:hover{border-color:#cbd5e1}
 .forgot-password a{color:#60a5fa;text-decoration:none;font-size:14px;transition:color .3s}
 .forgot-password a:hover{color:#3b82f6;text-decoration:underline}
 .btn-login{
-width:100%;padding:15px;background:linear-gradient(135deg,#7dd3fc 0%,#60a5fa 100%);
-color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:.3s;
-box-shadow:0 4px 15px rgba(96,165,250,.3)
+  width:100%;padding:15px;background:linear-gradient(135deg,#7dd3fc 0%,#60a5fa 100%);
+  color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:.3s;
+  box-shadow:0 4px 15px rgba(96,165,250,.3)
 }
 .btn-login:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(96,165,250,.4);background:linear-gradient(135deg,#60a5fa 0%,#3b82f6 100%)}
 .btn-login:active{transform:translateY(0)}
 .error{
-display:none;margin-bottom:15px;padding:10px 12px;border-radius:8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;
-font-size:14px
+  display:none;margin-bottom:15px;padding:10px 12px;border-radius:8px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;
+  font-size:14px
+}
+
+/* ===== NUEVO: mensaje de éxito (verde) ===== */
+.success{
+  display:none;margin-bottom:15px;padding:10px 12px;border-radius:8px;
+  background:#dcfce7;                 /* verde suave */
+  color:#166534;                       /* texto verde oscuro */
+  border:1px solid #bbf7d0;            /* borde verde claro */
+  font-size:14px;font-weight:600;
+  box-shadow:0 4px 12px rgba(22,101,52,0.08);
 }

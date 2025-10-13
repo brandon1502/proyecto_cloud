@@ -254,97 +254,91 @@
   </main>
 
   <script>
-    // Toggle sidebar
-    const toggleBtn = document.getElementById('toggleSidebar');
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-    
-    toggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
-      mainContent.classList.toggle('expanded');
-      toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
-    });
+  // ====== Desplegar: guardar en DB (/slices) y reenviar JSON a tu amigo ======
+  deployBtn.addEventListener('click', async () => {
+    const tplId = selectedTemplateId;
+    const zone = document.querySelector('input[name="zone"]:checked')?.value || '';
+    const tpl = templatesById.get(String(tplId));
+    if (!tpl) return;
 
-    // Navegación real
-    document.getElementById('inicioLink').addEventListener('click', (e) => {
-      // ya tiene href=/home
-    });
+    // nombre del slice
+    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
+    const sliceName = `${tpl.name}-${stamp}`.slice(0, 150);
 
-    document.getElementById('logoutLink').addEventListener('click', (e) => {
-      // ya tiene href=/auth/logout
-    });
+    const payloadSlice = {
+      template_id: Number(tplId),
+      az_hint: zone,
+      name: sliceName
+    };
 
-    document.getElementById('newTopologyBtn').addEventListener('click', () => {
-      window.location.href = '/plantillas/create';
-    });
+    deployBtn.disabled = true;
+    const oldText = deployBtn.textContent;
+    deployBtn.textContent = 'Desplegando…';
 
-    // Search functionality
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-      const searchTerm = e.target.value.toLowerCase();
-      const rows = document.querySelectorAll('#tableBody tr');
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    try {
+      // 1) Guardar slice en tu BD
+      const res = await fetch('/slices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payloadSlice)
       });
-    });
-
-    // Action functions
-    function viewTemplate(id) {
-      console.log('Ver plantilla:', id);
-      window.location.href = `/projects/${id}/view`;
-    }
-
-    function editTemplate(id) {
-      console.log('Editar plantilla:', id);
-      window.location.href = `/projects/${id}/edit`;
-    }
-
-    function deleteTemplate(id) {
-      if (confirm(`¿Estás seguro de que deseas eliminar la plantilla ${id}?`)) {
-        console.log('Eliminar plantilla:', id);
-        // Aquí iría la llamada al API para eliminar
-        // fetch(`/api/templates/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const msg = await res.text().catch(() => '');
+        throw new Error(msg || `HTTP ${res.status}`);
       }
-    }
-    document.addEventListener('DOMContentLoaded', loadTemplates);
+      const slice = await res.json();
 
-function loadTemplates() {
-  fetch('/templates')
-    .then(res => res.json())
-    .then(data => {
-      const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = ''; // limpiar tabla
+      // 2) Reenviar JSON guardado a la API de tu amigo
+      const forwardRes = await fetch('/deployments/forward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          template_id: Number(tplId),
+          az_hint: zone,
+          slice_id: slice?.slice_id ?? null
+        })
+      });
 
-      if (!data.length) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Sin plantillas registradas</td></tr>`;
-        return;
+      // Si falla el forward, igual el slice quedó guardado; notificamos claro.
+      if (!forwardRes.ok) {
+        const txt = await forwardRes.text().catch(() => '');
+        alert('⚠️ Slice creado, pero falló el envío a la API de despliegue: ' + (txt || forwardRes.status));
+      } else {
+        const respBody = await forwardRes.json().catch(() => ({}));
+        console.log('Respuesta API amigo:', respBody);
+        alert('✅ Despliegue enviado a la API de tu amigo');
       }
 
-      data.forEach(t => {
-        const created = new Date(t.created_at).toLocaleString();
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${t.name}</td>
-          <td>${t.placement_strategy || '-'}</td>
-          <td>${created}</td>
-          <td>-</td>
-          <td>-</td>
-          <td>-</td>
-          <td>-</td>
-          <td>-</td>
-          <td>
-            <button class="btn-action view" onclick="viewTemplate(${t.template_id})">👁️</button>
-          </td>`;
-        tbody.appendChild(row);
+      // 3) Actualiza tabla visual local
+      const createdAt = slice.created_at
+        ? new Date(slice.created_at).toLocaleString()
+        : new Date().toLocaleString();
+
+      const desc = tpl.description
+        ? `${tpl.description} · ${zone.toUpperCase()}`
+        : `Zona: ${zone.toUpperCase()}`;
+
+      addProjectRow({
+        id: slice.slice_id,
+        name: slice.name,
+        description: desc,
+        createdAt,
+        status: (slice.status || 'PENDING').toUpperCase()
       });
-    })
-    .catch(err => {
-      console.error("Error cargando templates:", err);
-    });
-}
+
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error al desplegar: ' + (err?.message || 'desconocido'));
+    } finally {
+      deployBtn.disabled = false;
+      deployBtn.textContent = oldText;
+    }
+  });
+</script>
 
 
-    
-  </script>
 </body>
 </html>

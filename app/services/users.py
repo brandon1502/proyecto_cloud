@@ -21,17 +21,20 @@ def create_user(db: Session, email: str, full_name: str, password: str) -> User:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="email already registered")
 
-    u = User(
+    user = User(
         email=email,
         full_name=full_name,
         password_hash=hash_password(password),
         is_active=True,
         created_at=datetime.now(timezone.utc),
+        role_id=2,
     )
-    db.add(u)
+    db.add(user)
     db.commit()
-    db.refresh(u)
-    return u
+    db.refresh(user)
+    return user
+
+
 
 def authenticate_user(db: Session, email: str, password: str) -> User | None:
     u = get_user_by_email(db, email)

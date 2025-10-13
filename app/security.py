@@ -16,11 +16,12 @@ def hash_password(plain: str) -> str:
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_ctx.verify(plain, hashed)
 
-def make_jwt(sub: str, role: str = "user"):
+def make_jwt(sub: str, role: str = "user", uid: int | None = None):
     exp = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     payload = {"sub": sub, "role": role, "exp": exp}
-    token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
-    return token
+    if uid is not None:
+        payload["uid"] = uid
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
 
 def decode_jwt(token: str):
     return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
