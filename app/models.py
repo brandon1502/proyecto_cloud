@@ -1,3 +1,14 @@
+"""Modelos de la base de datos (SQLAlchemy).
+
+Contiene las tablas principales utilizadas por la aplicación:
+- Roles, Users, ApiToken
+- Templates, TemplateVM, TemplateEdge
+- Flavours, AvailabilityZone, Slice
+
+Las relaciones y constraints están definidas en las clases; los scripts
+de inicialización se encuentran en `db/init/`.
+"""
+
 from sqlalchemy import (
     Column, BigInteger, Integer, String, Boolean, TIMESTAMP, JSON, Enum,
     ForeignKey, DECIMAL, UniqueConstraint, text
