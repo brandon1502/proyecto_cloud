@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Topología de VMs</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" rel="stylesheet">
+    <style>
+        .modern-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+        }
+
+        .modern-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s;
+            border-radius: 34px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .modern-switch input:checked + .switch-slider {
+            background-color: #64748b;
+        }
+
+        .modern-switch input:checked + .switch-slider:before {
+            transform: translateX(22px);
+        }
+
+        .modern-switch input:focus + .switch-slider {
+            box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.2);
+        }    
+
+        .form-group {
+            margin-bottom: 20px;
+            background: transparent;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        .form-group input[type="text"],
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(100, 116, 139, 0.08);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #1e293b;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #toolbox {
+            width: 280px;
+            min-width: 200px;
+            max-width: 500px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(100, 116, 139, 0.05);
+            position: relative;
+            resize: horizontal;
+        }
+
+        .toolbox-section {
+            padding: 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .toolbox-section h3 {
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tool-button {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            text-align: left;
+        }
+
+        .tool-button:hover {
+            background: white;
+            border-color: #60a5fa;
+            transform: translateX(5px);
+        }
+
+        .tool-button.active {
+            background: #dbeafe;
+            border-color: #60a5fa;
+        }
+
+        .tool-icon {
+            font-size: 24px;
+        }
+
+        .tool-label {
+            color: #475569;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .input-group button {
+            padding: 8px 16px;
+            background: #60a5fa;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .input-group button:hover {
+            background: #3b82f6;
+        }
+
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .template-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-align: center;
+        }
+
+        .template-card:hover {
+            background: white;
+            border-color: #60a5fa;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.2);
+        }
+
+        .template-card .tool-icon {
+            font-size: 32px;
+        }
+
+        .template-card .tool-label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        #import-file {
+            display: none;
+        }
+
+        #topology-canvas {
+            flex: 1;
+            background: white;
+            background-image: 
+                linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(100, 116, 139, 0.1);
+            z-index: 5;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-badge {
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .footer {
+            background: white;
+            padding: 15px 30px;
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -2px 10px rgba(100, 116, 139, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .footer-left,
+        .footer-right {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid;
+            white-space: nowrap;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #64748b;
+            border-color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .btn-primary {
+            background: #60a5fa;
+            color: white;
+            border-color: #60a5fa;
+        }
+
+        .btn-primary:hover {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+
+        /* -------- MODAL -------- */
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.45); /* un poco más dark/blur vibe */
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;                     /* más redondeado */
+    padding: 28px 32px;                      /* más aire */
+    max-width: 480px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow:
+        0 30px 80px rgba(0,0,0,0.4),
+        0 2px 4px rgba(0,0,0,0.06);
+    border: 1px solid #e2e8f0;               /* borde suave tipo card */
+    background-clip: padding-box;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;        /* línea más sutil */
+}
+
+.modal-header h2 {
+    color: #1e293b;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #94a3b8;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.modal-close:hover {
+    color: #475569;
+    background: #f8fafc;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* -------- FORM STYLES DENTRO DEL MODAL -------- */
+
+.form-group {
+    margin-bottom: 24px;
+    background: transparent;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e293b;
+}
+
+/* aplica tanto a text como number como select */
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+    width: 100%;
+    padding: 12px 14px;                      /* más gordito */
+    border: 1px solid #cbd5e1;               /* gris más visible */
+    border-radius: 8px;                      /* más redondeo */
+    font-size: 14px;
+    background: #fff;
+    color: #1e293b;
+    transition: all 0.15s;
+    line-height: 1.4;
+}
+
+.form-group input[type="text"]::placeholder,
+.form-group input[type="number"]::placeholder,
+.form-group select::placeholder {
+    color: #94a3b8;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.3); /* halo azul */
+}
+
+/* el bloque resumen flavour también puede verse más “card” */
+#flavour-summary {
+    display: none;
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+}
+#flavour-summary > div:first-child {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+#flavour-summary .stat-block {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+#flavour-summary .stat-label {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+#flavour-summary .stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        #vm-count {
+            flex: 0 0 140px;
+            width: 80px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #60a5fa;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p style="color: #475569; font-weight: 600;">Cargando plantilla...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <h1 id="page-title">Editar Topología de VMs</h1>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Toolbox -->
+        <aside id="toolbox">
+            <div class="toolbox-section">
+                <h3>🖥️ VMs Manuales</h3>
+                <div class="input-group">
+                    <input type="number" id="vm-count" placeholder="Cantidad" min="1" value="1">
+                    <button onclick="addManualVMs()">Agregar</button>
+                </div>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>📐 Plantillas</h3>
+                <div class="templates-grid">
+                    <div class="template-card" onclick="openTemplateModal('star')">
+                        <span class="tool-icon">✡</span>
+                        <span class="tool-label">Estrella</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('ring')">
+                        <span class="tool-icon">◯</span>
+                        <span class="tool-label">Anillo</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('tree')">
+                        <span class="tool-icon">𖣂</span>
+                        <span class="tool-label">Árbol</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('bus')">
+                        <span class="tool-icon">─</span>
+                        <span class="tool-label">Bus</span>
+                    </div>
+                    <div class="template-card" onclick="openTemplateModal('mesh')">
+                        <span class="tool-icon">🕸️</span>
+                        <span class="tool-label">Malla</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>📥 Importar</h3>
+                <input type="file" id="import-file" accept=".json" onchange="importTopology(event)">
+                <button class="tool-button" onclick="document.getElementById('import-file').click()">
+                    <span class="tool-icon">📂</span>
+                    <span class="tool-label">Importar Topología</span>
+                </button>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>🔗 Conexiones</h3>
+                <button class="tool-button" id="connection-mode-btn" onclick="toggleConnectionMode()">
+                    <span class="tool-icon">🔌</span>
+                    <span class="tool-label">Modo Conexión</span>
+                </button>
+            </div>
+
+            <div class="toolbox-section">
+                <h3>🗑️ Eliminar</h3>
+                <button class="tool-button" onclick="deleteSelected()">
+                    <span class="tool-icon">❌</span>
+                    <span class="tool-label">Eliminar Seleccionado</span>
+                </button>
+                <button class="tool-button" onclick="clearTopology()">
+                    <span class="tool-icon">🧹</span>
+                    <span class="tool-label">Limpiar Todo</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Canvas -->
+        <main id="topology-canvas">
+            <div id="info-panel">
+                <div class="info-item">
+                    <span>VMs:</span>
+                    <span class="info-badge" id="vm-count-display">0</span>
+                </div>
+                <div class="info-item">
+                    <span>Conexiones:</span>
+                    <span class="info-badge" id="connection-count-display">0</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-left">
+            <button class="btn btn-secondary" onclick="window.location.href='/plantillas'">← Volver</button>
+        </div>
+        <div class="footer-right">
+            <button class="btn btn-primary" onclick="updateTopology()">Actualizar Topología</button>
+        </div>
+    </footer>
+
+    <!-- Modal para Plantillas -->
+    <!-- Modal para Plantillas -->
+    <div id="template-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configurar Plantilla</h2>
+                <button class="modal-close" onclick="closeTemplateModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label>Cantidad de VMs</label>
+                <input type="number" id="template-vm-count" min="2" value="5">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTemplateModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="applyTemplate()">Aplicar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal para Configuración de VM -->
+    <div id="vm-config-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configuración de VM</h2>
+                <button class="modal-close" onclick="closeVMConfigModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" id="vm-name" placeholder="VM-001">
+            </div>
+
+            <div class="form-group">
+                <label>Flavour</label>
+                <select id="vm-flavour" onchange="updateFlavourSummary()">
+                    <option value="" disabled selected>Seleccionar Flavour</option>
+                </select>
+            </div>
+
+            <div id="flavour-summary" style="display: none; background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="font-size: 13px; color: #475569; font-weight: 600; margin-bottom: 8px;">📋 Resumen del Flavour:</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                    <div style="background: white; padding: 8px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">vCPUs</div>
+                        <div id="summary-cpu" style="font-size: 16px; font-weight: 700; color: #1e293b;">-</div>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">RAM</div>
+                        <div id="summary-ram" style="font-size: 16px; font-weight: 700; color: #1e293b;">-</div>
+                    </div>
+                    <div style="background: white; padding: 8px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">Disco</div>
+                        <div id="summary-disk" style="font-size: 16px; font-weight: 700; color: #1e293b;">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Imagen</label>
+                <select id="vm-image">
+                    <option value="" disabled selected>Seleccionar Imagen</option>
+                    <option value="Ubuntu">Ubuntu</option>
+                    <option value="CirrOS">CirrOS</option>
+                    <option value="Debian">Debian</option>
+                    <option value="CentOS">CentOS</option>
+                </select>
+            </div>
+
+            <div class="form-group"> 
+                <label style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0;">
+                    <span>Conexión Externa</span>
+                    <div style="display: flex; align-items: center; gap: 10px;"> 
+                        <label class="modern-switch"> 
+                            <input type="checkbox" id="vm-internet"> 
+                            <span class="switch-slider"></span> 
+                        </label> 
+                        <span id="internet-status" style="font-size: 13px; font-weight: 500; color: #94a3b8; min-width: 35px;">OFF</span> 
+                    </div>
+                </label>
+            </div>
+            <div class="modal-footer"> 
+                <button class="btn btn-secondary" onclick="closeVMConfigModal()">Cancelar</button> 
+                <button class="btn btn-primary" onclick="saveVMConfig()">Guardar</button> 
+            </div> 
+        </div>
+    </div>
+
+    <!-- Modal para Actualizar Topología -->
+    <div id="update-topology-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Actualizar Topología</h2>
+                <button class="modal-close" onclick="closeUpdateModal()">×</button>
+            </div>
+            <div class="form-group">
+                <label>Nombre del Slice</label>
+                <input type="text" id="update-slice-name" placeholder="Ej: Slice prueba">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" id="update-description" placeholder="Ingresa una breve descripción">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeUpdateModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmUpdateTopology()">Actualizar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Variables globales
+        let network;
+        let nodes;
+        let edges;
+        let vmCounter = 0;
+        let connectionMode = false;
+        let firstNodeSelected = null;
+        let currentTemplateType = null;
+        let selectedNodeId = null;
+        let vmConfigs = {};
+        const PC_IMAGE = '/static/images/pc.png';
+        let FLAVOURS = {};
+        let currentTemplateId = null; // ID del template que estamos editando
+
+        // Obtener el template_id de la URL
+        function getTemplateIdFromURL() {
+            const pathParts = window.location.pathname.split('/');
+            // La ruta es /plantillas/{template_id}/edit
+            const plantillasIndex = pathParts.indexOf('plantillas');
+            if (plantillasIndex !== -1 && pathParts[plantillasIndex + 1]) {
+                const templateId = parseInt(pathParts[plantillasIndex + 1]);
+                if (!isNaN(templateId)) {
+                    return templateId;
+                }
+            }
+            return null;
+        }
+
+        // Cargar el template desde el backend
+        async function loadTemplate() {
+            currentTemplateId = getTemplateIdFromURL();
+            
+            if (!currentTemplateId) {
+                alert('❌ No se especificó un template para editar');
+                window.location.href = '/plantillas';
+                return;
+            }
+
+            try {
+                showLoading(true);
+                
+                const response = await fetch(`/templates/${currentTemplateId}`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error al cargar el template');
+                }
+
+                const data = await response.json();
+                
+                // Actualizar título
+                document.getElementById('page-title').textContent = `Editar: ${data.name}`;
+                
+                // Cargar datos del template
+                if (data.json_template) {
+                    loadTemplateData(data);
+                } else {
+                    alert('⚠️ Este template no tiene datos de topología');
+                }
+
+                showLoading(false);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error al cargar el template: ' + error.message);
+                showLoading(false);
+            }
+        }
+
+        // Cargar datos del template en el canvas
+        function loadTemplateData(templateData) {
+            const jsonTemplate = templateData.json_template;
+            
+            // Limpiar canvas actual
+            nodes.clear();
+            edges.clear();
+            vmConfigs = {};
+            vmCounter = 0;
+
+            const topologia = jsonTemplate.topologia || {};
+            const recursos = jsonTemplate.recursos || {};
+
+            // Cargar nodos
+            if (Array.isArray(topologia.nodes)) {
+                topologia.nodes.forEach(node => {
+                    const recurso = recursos[node.id];
+                    
+                    if (recurso) {
+                        const config = {
+                            name: recurso.name || node.label,
+                            flavour: recurso.flavour || 'small',
+                            cpu: recurso.vcpu || 2,
+                            ram: recurso.ram_gb || 1,
+                            disk: recurso.disk_gb || 6,
+                            image: recurso.os || 'Ubuntu',
+                            internet: jsonTemplate.subred?.public_access?.includes(node.id) || false
+                        };
+
+                        vmConfigs[node.id] = config;
+
+                        const pos = node.x !== undefined && node.y !== undefined 
+                            ? { x: node.x, y: node.y }
+                            : randomXY();
+
+                        nodes.add({
+                            id: node.id,
+                            label: `${config.name}\n${config.image}`,
+                            title: buildNodeTitle(config),
+                            shape: 'image',
+                            image: PC_IMAGE,
+                            x: pos.x,
+                            y: pos.y,
+                            fixed: false,
+                            physics: false
+                        });
+
+                        // Actualizar contador
+                        const match = String(node.id).match(/vm-(\d+)/);
+                        if (match) {
+                            vmCounter = Math.max(vmCounter, parseInt(match[1], 10));
+                        }
+                    }
+                });
+            }
+
+            // Cargar conexiones
+            if (Array.isArray(topologia.edges)) {
+                topologia.edges.forEach(edge => {
+                    edges.add({
+                        id: edge.id,
+                        from: edge.from,
+                        to: edge.to
+                    });
+                });
+            }
+
+            // Guardar datos del template para actualización
+            document.getElementById('update-slice-name').value = templateData.name;
+            document.getElementById('update-description').value = templateData.description || '';
+
+            updateStats();
+        }
+
+        function buildNodeTitle(config) {
+            return `${config.name}\nFlavour: ${config.flavour}\n` +
+                   `CPU: ${config.cpu}v | RAM: ${config.ram}GB\n` +
+                   `Disco: ${config.disk}GB\nImagen: ${config.image}\n` +
+                   `Internet: ${config.internet ? 'Sí' : 'No'}`;
+        }
+
+        function showLoading(show) {
+            const overlay = document.getElementById('loading-overlay');
+            if (show) {
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
+        }
+
+        // Switch de internet
+        document.getElementById('vm-internet').addEventListener('change', function() {
+            const status = document.getElementById('internet-status');
+            if (this.checked) {
+                status.textContent = 'ON';
+                status.style.color = '#475569';
+            } else {
+                status.textContent = 'OFF';
+                status.style.color = '#94a3b8';
+            }
+        });
+
+        function randomXY() {
+            const c = document.getElementById('topology-canvas');
+            const w = (c?.clientWidth || 1000);
+            const h = (c?.clientHeight || 600);
+            const x = (Math.random() - 0.5) * w * 0.8;
+            const y = (Math.random() - 0.5) * h * 0.8;
+            return { x, y };
+        }
+
+        function initNetwork() {
+            const container = document.getElementById('topology-canvas');
+            nodes = new vis.DataSet([]);
+            edges = new vis.DataSet([]);
+            const data = { nodes, edges };
+
+            const options = {
+                nodes: {
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    size: 40,
+                    font: {
+                        size: 14,
+                        color: '#1e293b',
+                        face: 'Segoe UI',
+                        background: 'rgba(255, 255, 255, 0.8)',
+                        strokeWidth: 0
+                    },
+                    borderWidth: 2,
+                    borderWidthSelected: 3,
+                    chosen: {
+                        node: function(values) {
+                            values.borderWidth = 3;
+                            values.borderColor = '#3b82f6';
+                        }
+                    }
+                },
+                edges: {
+                    color: { color: '#94a3b8', highlight: '#60a5fa' },
+                    width: 2,
+                    smooth: { type: 'continuous' }
+                },
+                physics: {
+                    enabled: false
+                },
+                interaction: {
+                    hover: true,
+                    dragNodes: true,
+                    tooltipDelay: 150
+                }
+            };
+
+            network = new vis.Network(container, data, options);
+
+            network.on('click', function(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    if (connectionMode) {
+                        handleConnectionClick(nodeId);
+                    } else {
+                        openVMConfigModal(nodeId);
+                    }
+                }
+            });
+        }
+
+        function addManualVMs() {
+            const count = parseInt(document.getElementById('vm-count').value) || 1;
+
+            for (let i = 0; i < count; i++) {
+                vmCounter++;
+                const nodeId = `vm-${vmCounter}`;
+                const label = `VM-${String(vmCounter).padStart(3, '0')}`;
+                const pos = randomXY();
+
+                nodes.add({
+                    id: nodeId,
+                    label: label,
+                    title: `${label}\nClick para configurar`,
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    x: pos.x,
+                    y: pos.y,
+                    fixed: false,
+                    physics: false
+                });
+
+                vmConfigs[nodeId] = {
+                    name: label,
+                    flavour: 'small',
+                    cpu: 2,
+                    ram: 1,
+                    disk: 6,
+                    image: 'Ubuntu',
+                    internet: false
+                };
+            }
+
+            updateStats();
+        }
+
+        function openTemplateModal(templateType) {
+            currentTemplateType = templateType;
+            document.getElementById('template-modal').classList.add('active');
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('template-modal').classList.remove('active');
+            currentTemplateType = null;
+        }
+
+        function applyTemplate() {
+            const count = parseInt(document.getElementById('template-vm-count').value) || 5;
+            
+            switch(currentTemplateType) {
+                case 'star':
+                    createStarTopology(count);
+                    break;
+                case 'ring':
+                    createRingTopology(count);
+                    break;
+                case 'tree':
+                    createTreeTopology(count);
+                    break;
+                case 'bus':
+                    createBusTopology(count);
+                    break;
+                case 'mesh':
+                    createMeshTopology(count);
+                    break;
+            }
+            
+            closeTemplateModal();
+            updateStats();
+        }
+
+        function createStarTopology(count) {
+            if (count < 2) count = 2;
+            const center = randomXY();
+            const centerNodeId = `vm-${++vmCounter}`;
+
+            nodes.add({
+                id: centerNodeId,
+                label: `VM-${String(vmCounter).padStart(3, '0')}\n(Centro)`,
+                shape: 'image',
+                image: PC_IMAGE,
+                x: center.x,
+                y: center.y,
+                fixed: false,
+                physics: false
+            });
+            vmConfigs[centerNodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+
+            const r = 220;
+            for (let i = 0; i < count - 1; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                const theta = (2 * Math.PI * i) / (count - 1);
+
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`,
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    x: center.x + r * Math.cos(theta),
+                    y: center.y + r * Math.sin(theta),
+                    fixed: false,
+                    physics: false
+                });
+
+                edges.add({ id: `edge-${centerNodeId}-${nodeId}`, from: centerNodeId, to: nodeId });
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+
+            updateStats();
+        }
+
+        function createRingTopology(count) {
+            if (count < 3) count = 3;
+            const nodeIds = [];
+            const center = randomXY();
+            const r = 240;
+
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                const theta = (2 * Math.PI * i) / count;
+
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`,
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    x: center.x + r * Math.cos(theta),
+                    y: center.y + r * Math.sin(theta),
+                    fixed: false,
+                    physics: false
+                });
+
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+
+            for (let i = 0; i < count; i++) {
+                const from = nodeIds[i];
+                const to = nodeIds[(i + 1) % count];
+                edges.add({ id: `edge-${from}-${to}`, from, to });
+            }
+
+            updateStats();
+        }
+
+        function createTreeTopology(count) {
+            const nodeIds = [];
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                const label = i === 0
+                    ? `VM-${String(vmCounter).padStart(3, '0')}\n(Raíz)`
+                    : `VM-${String(vmCounter).padStart(3, '0')}`;
+                const p = randomXY();
+                nodes.add({
+                    id: nodeId,
+                    label,
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    x: p.x,
+                    y: p.y,
+                    fixed: false,
+                    physics: false
+                });
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+            for (let i = 0; i < count; i++) {
+                const L = 2 * i + 1, R = 2 * i + 2;
+                if (L < count) edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[L]}`, from: nodeIds[i], to: nodeIds[L] });
+                if (R < count) edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[R]}`, from: nodeIds[i], to: nodeIds[R] });
+            }
+        }
+
+        function createBusTopology(count) {
+            const nodeIds = [];
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                const p = randomXY();
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`,
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    x: p.x,
+                    y: p.y,
+                    fixed: false,
+                    physics: false
+                });
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+            for (let i = 0; i < count - 1; i++) {
+                edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[i + 1]}`, from: nodeIds[i], to: nodeIds[i + 1] });
+            }
+        }
+
+        function createMeshTopology(count) {
+            const nodeIds = [];
+            for (let i = 0; i < count; i++) {
+                const nodeId = `vm-${++vmCounter}`;
+                const p = randomXY();
+                nodes.add({
+                    id: nodeId,
+                    label: `VM-${String(vmCounter).padStart(3, '0')}`,
+                    shape: 'image',
+                    image: PC_IMAGE,
+                    x: p.x,
+                    y: p.y,
+                    fixed: false,
+                    physics: false
+                });
+                nodeIds.push(nodeId);
+                vmConfigs[nodeId] = getDefaultConfig(`VM-${String(vmCounter).padStart(3, '0')}`);
+            }
+            for (let i = 0; i < count; i++) {
+                for (let j = i + 1; j < count; j++) {
+                    edges.add({ id: `edge-${nodeIds[i]}-${nodeIds[j]}`, from: nodeIds[i], to: nodeIds[j] });
+                }
+            }
+        }
+
+        function toggleConnectionMode() {
+            connectionMode = !connectionMode;
+            const btn = document.getElementById('connection-mode-btn');
+            
+            if (connectionMode) {
+                btn.classList.add('active');
+                firstNodeSelected = null;
+            } else {
+                btn.classList.remove('active');
+                firstNodeSelected = null;
+            }
+        }
+
+        function handleConnectionClick(nodeId) {
+            if (!firstNodeSelected) {
+                firstNodeSelected = nodeId;
+                network.selectNodes([nodeId]);
+            } else {
+                if (firstNodeSelected !== nodeId) {
+                    const edgeId = `edge-${firstNodeSelected}-${nodeId}`;
+                    
+                    if (!edges.get(edgeId)) {
+                        edges.add({
+                            id: edgeId,
+                            from: firstNodeSelected,
+                            to: nodeId
+                        });
+                        updateStats();
+                    }
+                }
+                
+                firstNodeSelected = null;
+                network.unselectAll();
+            }
+        }
+
+        function openVMConfigModal(nodeId) {
+            selectedNodeId = nodeId;
+            const config = vmConfigs[nodeId] || getDefaultConfig(nodeId);
+            
+            document.getElementById('vm-name').value = config.name;
+            document.getElementById('vm-flavour').value = config.flavour;
+            document.getElementById('vm-image').value = config.image;
+            document.getElementById('vm-internet').checked = config.internet || false;
+            
+            const status = document.getElementById('internet-status');
+            if (config.internet) {
+                status.textContent = 'ON';
+                status.style.color = '#475569';
+            } else {
+                status.textContent = 'OFF';
+                status.style.color = '#94a3b8';
+            }
+            
+            updateFlavourSummary();
+            
+            document.getElementById('vm-config-modal').classList.add('active');
+        }
+
+        function closeVMConfigModal() {
+            document.getElementById('vm-config-modal').classList.remove('active');
+            selectedNodeId = null;
+        }
+
+        function saveVMConfig() {
+            if (!selectedNodeId) return;
+            
+            const selectedFlavour = document.getElementById('vm-flavour').value;
+            
+            if (!selectedFlavour || !FLAVOURS[selectedFlavour]) {
+                alert('⚠️ Por favor selecciona un flavour');
+                return;
+            }
+            
+            const flavourData = FLAVOURS[selectedFlavour];
+            
+            const config = {
+                name: document.getElementById('vm-name').value,
+                flavour: selectedFlavour,
+                cpu: flavourData.cpu,
+                ram: flavourData.ram,
+                disk: flavourData.disk,
+                image: document.getElementById('vm-image').value,
+                internet: document.getElementById('vm-internet').checked
+            };
+            
+            vmConfigs[selectedNodeId] = config;
+            
+            nodes.update({
+                id: selectedNodeId,
+                label: `${config.name}\n${config.image}`,
+                title: buildNodeTitle(config)
+            });
+            
+            closeVMConfigModal();
+        }
+
+        function getDefaultConfig(name) {
+            return {
+                name: name,
+                flavour: 'small',
+                cpu: 2,
+                ram: 1,
+                disk: 6,
+                image: 'Ubuntu',
+                internet: false
+            };
+        }
+
+        function deleteSelected() {
+            const selectedNodes = network.getSelectedNodes();
+            const selectedEdges = network.getSelectedEdges();
+            
+            if (selectedNodes.length > 0) {
+                selectedNodes.forEach(nodeId => {
+                    nodes.remove(nodeId);
+                    delete vmConfigs[nodeId];
+                });
+            }
+            
+            if (selectedEdges.length > 0) {
+                edges.remove(selectedEdges);
+            }
+            
+            updateStats();
+        }
+
+        function clearTopology() {
+            if (confirm('¿Estás seguro de que deseas eliminar toda la topología?')) {
+                nodes.clear();
+                edges.clear();
+                vmConfigs = {};
+                vmCounter = 0;
+                updateStats();
+            }
+        }
+
+        function importTopology(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const raw = JSON.parse(e.target.result);
+                    const topo = raw.topologia ? raw.topologia : raw;
+                    const recursos = raw.recursos || {};
+
+                    nodes.clear();
+                    edges.clear();
+                    vmConfigs = {};
+                    vmCounter = 0;
+
+                    if (Array.isArray(topo.nodes)) {
+                        topo.nodes.forEach(n => {
+                            let cfg;
+                            
+                            if (recursos[n.id]) {
+                                const rec = recursos[n.id];
+                                cfg = {
+                                    name: rec.name || n.label || n.id,
+                                    flavour: rec.flavour || 'small',
+                                    cpu: rec.cpu || rec.vcpu || 2,
+                                    ram: rec.ram || rec.ram_gb || 1,
+                                    disk: rec.disk || rec.disk_gb || 6,
+                                    image: rec.image || rec.os || 'Ubuntu',
+                                    internet: rec.internet || false
+                                };
+                            } else {
+                                cfg = getDefaultConfig(n.label || n.id);
+                            }
+
+                            vmConfigs[n.id] = cfg;
+
+                            const p = (n.position && typeof n.position.x === 'number' && typeof n.position.y === 'number')
+                                ? { x: n.position.x, y: n.position.y }
+                                : randomXY();
+
+                            nodes.add({
+                                id: n.id,
+                                label: n.label || cfg.name,
+                                title: buildNodeTitle(cfg),
+                                shape: 'image',
+                                image: PC_IMAGE,
+                                x: p.x,
+                                y: p.y,
+                                fixed: false,
+                                physics: false
+                            });
+
+                            const m = String(n.id).match(/vm-(\d+)/);
+                            if (m) vmCounter = Math.max(vmCounter, parseInt(m[1], 10));
+                        });
+                    }
+
+                    if (Array.isArray(topo.edges)) {
+                        topo.edges.forEach(e2 => {
+                            edges.add({ id: e2.id, from: e2.from, to: e2.to });
+                        });
+                    }
+
+                    updateStats();
+                    alert('✅ Topología importada exitosamente');
+                } catch (err) {
+                    console.error('Error al importar:', err);
+                    alert('❌ Error al importar topología: ' + err.message);
+                }
+            };
+
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function updateTopology() {
+            const totalNodes = nodes ? nodes.get().length : 0;
+            if (!totalNodes) {
+                alert('⚠️ No hay VMs para actualizar');
+                return;
+            }
+            
+            document.getElementById('update-topology-modal').classList.add('active');
+        }
+
+        function closeUpdateModal() {
+            document.getElementById('update-topology-modal').classList.remove('active');
+        }
+
+        async function confirmUpdateTopology() {
+            const sliceName = document.getElementById('update-slice-name').value.trim();
+            const description = document.getElementById('update-description').value.trim();
+
+            if (!sliceName) {
+                alert('⚠️ Por favor ingresa el nombre del slice');
+                return;
+            }
+
+            // Construir el JSON actualizado
+            const allNodes = nodes.get();
+            const allEdges = edges.get();
+            
+            const topologiaNodes = allNodes.map(n => {
+                const pos = network.getPositions([n.id])[n.id];
+                return {
+                    id: n.id,
+                    label: vmConfigs[n.id]?.name || n.label,
+                    x: pos?.x || 0,
+                    y: pos?.y || 0
+                };
+            });
+
+            const recursos = {};
+            const publicAccessIds = [];
+
+            allNodes.forEach(n => {
+                const cfg = vmConfigs[n.id];
+                if (cfg) {
+                    recursos[n.id] = {
+                        name: cfg.name,
+                        ram_gb: cfg.ram,
+                        vcpu: cfg.cpu,
+                        disk_gb: cfg.disk,
+                        os: cfg.image.toLowerCase(),
+                        flavour: cfg.flavour
+                    };
+
+                    if (cfg.internet) {
+                        publicAccessIds.push(n.id);
+                    }
+                }
+            });
+
+            const jsonTemplate = {
+                topologia: {
+                    nodes: topologiaNodes,
+                    edges: allEdges.map(e => ({ id: e.id, from: e.from, to: e.to }))
+                },
+                recursos: recursos,
+                subred: {
+                    public_access: publicAccessIds
+                }
+            };
+
+            const payload = {
+                name: sliceName,
+                description: description,
+                json_template: jsonTemplate
+            };
+
+            try {
+                showLoading(true);
+                
+                const response = await fetch(`/templates/${currentTemplateId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let msg = "Error al actualizar template";
+                    try {
+                        const data = await response.json();
+                        if (data?.detail) msg = data.detail;
+                    } catch (_) {}
+                    throw new Error(msg);
+                }
+
+                await response.json();
+                
+                showLoading(false);
+                alert("✅ Template actualizado correctamente");
+                window.location.href = "/plantillas";
+                
+            } catch (err) {
+                console.error(err);
+                showLoading(false);
+                alert("❌ Error actualizando template: " + err.message);
+            }
+        }
+
+        function updateStats() {
+            const vmBadge = document.getElementById('vm-count-display');
+            const edgeBadge = document.getElementById('connection-count-display');
+
+            const n = nodes ? nodes.get().length : 0;
+            const e = edges ? edges.get().length : 0;
+
+            if (vmBadge) vmBadge.textContent = n;
+            if (edgeBadge) edgeBadge.textContent = e;
+        }
+
+        async function loadFlavours() {
+            try {
+                const res = await fetch('/flavours', {
+                    credentials: 'include'
+                });
+
+                if (!res.ok) {
+                    console.error('No se pudieron cargar los flavours:', res.status);
+                    return;
+                }
+
+                const data = await res.json();
+                FLAVOURS = {};
+                const sel = document.getElementById('vm-flavour');
+                sel.innerHTML = '<option value="" disabled selected>Seleccionar Flavour</option>';
+
+                data.forEach(f => {
+                    FLAVOURS[f.name] = {
+                        cpu: f.vcpu,
+                        ram: Number(f.ram_gb),
+                        disk: Number(f.disk_gb)
+                    };
+                    const opt = document.createElement('option');
+                    opt.value = f.name;
+                    opt.textContent = f.name;
+                    sel.appendChild(opt);
+                });
+
+                updateFlavourSummary();
+            } catch (e) {
+                console.error('Error cargando flavours:', e);
+            }
+        }
+
+        function updateFlavourSummary() {
+            const flavourSelect = document.getElementById('vm-flavour');
+            const summaryDiv = document.getElementById('flavour-summary');
+            const selectedFlavour = flavourSelect.value;
+
+            if (selectedFlavour && FLAVOURS[selectedFlavour]) {
+                const f = FLAVOURS[selectedFlavour];
+                document.getElementById('summary-cpu').textContent = f.cpu;
+                document.getElementById('summary-ram').textContent = f.ram + ' GB';
+                document.getElementById('summary-disk').textContent = f.disk + ' GB';
+                summaryDiv.style.display = 'block';
+            } else {
+                summaryDiv.style.display = 'none';
+            }
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async function() {
+            initNetwork();
+            updateStats();
+            await loadFlavours();
+            await loadTemplate(); // Cargar el template al iniciar
+        });
+    </script>
+</body>
+</html>

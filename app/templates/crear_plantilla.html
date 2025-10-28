@@ -1508,7 +1508,7 @@ function confirmSaveTopology() {
     recursos: recursos
   };
 
-  fetch("/templates", {
+  fetch("/templates/guardar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",                // 🔴 IMPORTANTE: envía la cookie de sesión

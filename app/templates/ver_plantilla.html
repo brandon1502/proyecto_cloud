@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Slice</title>
+
+    <!-- vis-network -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 18px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(100, 116, 139, 0.08);
+            z-index: 10;
+        }
+
+        .header h1 {
+            color: #1e293b;
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slice-subtitle {
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+
+        /* Main container */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Canvas */
+        #topology-canvas {
+            flex: 1;
+            background: white;
+            background-image:
+                linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+        }
+
+        /* Summary Panel */
+        #summary-panel {
+            width: 300px;
+            background: white;
+            border-left: 1px solid #e2e8f0;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(100, 116, 139, 0.05);
+        }
+
+        .panel-section {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .panel-section h3 {
+            color: #1e293b;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 12px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .info-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #1e293b;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* Stats compact */
+        .stats-compact {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-mini {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-mini-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .stat-mini-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        /* Resource totals compact */
+        .resources-compact {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .resource-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(147, 197, 253, 0.3);
+        }
+
+        .resource-row:last-child {
+            border-bottom: none;
+        }
+
+        .resource-label {
+            font-size: 12px;
+            color: #1e40af;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .resource-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        /* VM list compact */
+        .vm-compact {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .vm-compact:hover {
+            background: white;
+            border-color: #60a5fa;
+            transform: translateX(-3px);
+        }
+
+        .vm-compact-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .vm-compact-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .vm-compact-flavour {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .vm-compact-details {
+            font-size: 11px;
+            color: #64748b;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 8px;
+            line-height: 1.4;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 16px;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+
+        /* Footer */
+        .footer {
+            background: white;
+            padding: 12px 30px;
+            border-top: 1px solid #e2e8f0;
+            box-shadow: 0 -2px 10px rgba(100, 116, 139, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #64748b;
+            border-color: #e2e8f0;
+        }
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .btn-primary {
+            background: #60a5fa;
+            color: white;
+            border-color: #60a5fa;
+        }
+        .btn-primary:hover {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>
+            <span>📊</span>
+            <span id="slice-name">Cargando...</span>
+        </h1>
+        <div class="slice-subtitle" id="slice-description"></div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Canvas -->
+        <main id="topology-canvas"></main>
+
+        <!-- Right Panel -->
+        <aside id="summary-panel">
+            <!-- Información General -->
+            <div class="panel-section">
+                <h3>📋 Información</h3>
+                <div class="info-grid">
+                    <span class="info-label">Creado:</span>
+                    <span class="info-value" id="meta-created">-</span>
+                    
+                    <span class="info-label">Actualizado:</span>
+                    <span class="info-value" id="meta-updated">-</span>
+                </div>
+            </div>
+
+            <!-- Stats compactas -->
+            <div class="panel-section">
+                <h3>📊 Estadísticas</h3>
+                <div class="stats-compact">
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="total-vms">0</div>
+                        <div class="stat-mini-label">VMs</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="total-connections">0</div>
+                        <div class="stat-mini-label">Conexiones</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="total-internet">0</div>
+                        <div class="stat-mini-label">Con Internet</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="unique-images">0</div>
+                        <div class="stat-mini-label">Imágenes</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recursos totales compactos -->
+            <div class="panel-section">
+                <h3>⚡ Recursos Totales</h3>
+                <div class="resources-compact">
+                    <div class="resource-row">
+                        <span class="resource-label">🔢 vCPUs</span>
+                        <span class="resource-value" id="total-cpu">0</span>
+                    </div>
+                    <div class="resource-row">
+                        <span class="resource-label">💾 RAM</span>
+                        <span class="resource-value" id="total-ram">0 GB</span>
+                    </div>
+                    <div class="resource-row">
+                        <span class="resource-label">💿 Disco</span>
+                        <span class="resource-value" id="total-disk">0 GB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VMs compactas -->
+            <div class="panel-section">
+                <h3>🖥️ Máquinas Virtuales</h3>
+                <div id="vms-list"></div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <a href="/plantillas" class="btn btn-secondary">← Volver</a>
+        <button class="btn btn-primary" id="download-btn">📥 Descargar JSON</button>
+    </footer>
+
+<script>
+    // esto lo inyecta FastAPI en la template Jinja2
+    window.CURRENT_TEMPLATE_ID = "{{ template_id }}";
+</script>
+
+<script>
+    const PC_IMAGE = '/static/images/pc.png';
+    let network;
+    const currentTemplateId = parseInt(window.CURRENT_TEMPLATE_ID, 10);
+    let templateRecord = null;
+    let topoJSON = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadTemplateFromDB();
+        document.getElementById('download-btn').addEventListener('click', downloadJSONFromServer);
+    });
+
+    async function loadTemplateFromDB() {
+        try {
+            const res = await fetch(`/templates/${currentTemplateId}`, {
+                credentials: "include"
+            });
+            if (!res.ok) {
+                throw new Error("No se pudo cargar la plantilla");
+            }
+
+            templateRecord = await res.json();
+
+            if (!templateRecord.json_template) {
+                throw new Error("Esta plantilla no tiene json_template guardado");
+            }
+
+            topoJSON = normalizeTemplateJSON(templateRecord.json_template);
+
+            renderHeader(topoJSON);
+            initNetwork(topoJSON);      // <-- acá generamos nodos con title
+            updateSidePanel(topoJSON);
+
+        } catch (err) {
+            console.error(err);
+            alert("❌ Error cargando plantilla: " + err.message);
+        }
+    }
+
+    function normalizeTemplateJSON(raw) {
+        const topo = raw.topologia || {nodes:[], edges:[]};
+        const recursos = raw.recursos || {};
+        const publicList = (raw.subred && Array.isArray(raw.subred.public_access))
+            ? raw.subred.public_access
+            : [];
+
+        const normRec = {};
+        Object.entries(recursos).forEach(([vmId, cfg]) => {
+            normRec[vmId] = {
+                name: cfg.name || vmId,
+                flavour: cfg.flavour || "N/A",
+                cpu: cfg.cpu || cfg.vcpu || 0,
+                ram: cfg.ram || cfg.ram_gb || 0,
+                disk: cfg.disk || cfg.disk_gb || 0,
+                image: cfg.image || cfg.os || "N/A",
+                internet: publicList.includes(vmId)
+            };
+        });
+
+        const laidOut = applyFallbackPositions(topo.nodes);
+
+        return {
+            name: templateRecord.name,
+            description: templateRecord.description,
+            created_at: templateRecord.created_at || null,
+            updated_at: templateRecord.updated_last_at || null,
+            topologia: {
+                nodes: laidOut,
+                edges: topo.edges || []
+            },
+            recursos: normRec
+        };
+    }
+
+    // Si algún nodo no trae x / y guardado, lo acomodamos en círculo
+    function applyFallbackPositions(nodes) {
+        if (!nodes || nodes.length === 0) return [];
+        const needsLayout = nodes.some(n => typeof n.x !== "number" || typeof n.y !== "number");
+        if (!needsLayout) return nodes;
+
+        const count = nodes.length;
+        const radius = 180;
+        const cx = 0, cy = 0;
+
+        return nodes.map((n, i) => {
+            const angle = (2 * Math.PI * i) / count;
+            return {
+                ...n,
+                x: cx + radius * Math.cos(angle),
+                y: cy + radius * Math.sin(angle)
+            };
+        });
+    }
+
+    function renderHeader(topoJSON) {
+        document.getElementById('slice-name').textContent =
+            topoJSON.name || ("Template #" + currentTemplateId);
+        document.getElementById('slice-description').textContent =
+            topoJSON.description || "";
+
+        document.getElementById('meta-created').textContent =
+            formatDate(templateRecord.created_at);
+        document.getElementById('meta-updated').textContent =
+            formatDate(templateRecord.updated_last_at);
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return "-";
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('es-ES', { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+
+    function buildNodeTitle(cfg) {
+        // mismo formato que en editar plantilla
+        return (
+            `${cfg.name}\n` +
+            `Flavour: ${cfg.flavour}\n` +
+            `CPU: ${cfg.cpu}v | RAM: ${cfg.ram}GB\n` +
+            `Disco: ${cfg.disk}GB\n` +
+            `Imagen: ${cfg.image}\n` +
+            `Internet: ${cfg.internet ? 'Sí' : 'No'}`
+        );
+    }
+
+    function initNetwork(topoJSON) {
+        const container = document.getElementById('topology-canvas');
+
+        const nodes = new vis.DataSet(
+            topoJSON.topologia.nodes.map(node => {
+                const cfg = topoJSON.recursos[node.id] || {};
+
+                return {
+                    id: node.id,
+                    label: `${cfg.name || node.label || node.id}\n${cfg.image || 'N/A'}`,
+                    title: buildNodeTitle(cfg),   // 👈 tooltip nativo
+                    shape: "image",
+                    image: PC_IMAGE,
+                    x: node.x,
+                    y: node.y,
+                    fixed: false,
+                    physics: false
+                };
+            })
+        );
+
+        const edges = new vis.DataSet(
+            (topoJSON.topologia.edges || []).map(e => ({
+                id: e.id || (`edge-${e.from}-${e.to}`),
+                from: e.from,
+                to: e.to
+            }))
+        );
+
+        const data = { nodes, edges };
+
+        const options = {
+            nodes: {
+                shape: "image",
+                image: PC_IMAGE,
+                size: 40,
+                font: {
+                    size: 13,
+                    color: "#1e293b",
+                    face: "Segoe UI",
+                    background: "rgba(255, 255, 255, 0.9)",
+                    strokeWidth: 0,
+                    multi: true
+                },
+                borderWidth: 2,
+                borderWidthSelected: 3
+            },
+            edges: {
+                color: { color: "#94a3b8", highlight: "#60a5fa" },
+                width: 2,
+                smooth: { type: "continuous" }
+            },
+            physics: { enabled: false },
+            interaction: {
+                dragNodes: true,
+                dragView: true,
+                zoomView: true,
+                selectable: true,
+                hover: true,          // <- importante para que vis muestre el title
+                tooltipDelay: 150     // delay similar al editor
+            }
+        };
+
+        network = new vis.Network(container, data, options);
+    }
+
+    function computeTotals(topoJSON) {
+        const recursos = topoJSON.recursos;
+        let totalCPU = 0, totalRAM = 0, totalDisk = 0;
+        let withInternet = 0;
+        const imagesSet = new Set();
+
+        Object.values(recursos).forEach(cfg => {
+            totalCPU  += cfg.cpu  || 0;
+            totalRAM  += cfg.ram  || 0;
+            totalDisk += cfg.disk || 0;
+            if (cfg.internet) withInternet += 1;
+            if (cfg.image) imagesSet.add(cfg.image);
+        });
+
+        return {
+            totalCPU,
+            totalRAM,
+            totalDisk,
+            withInternet,
+            uniqueImages: imagesSet.size
+        };
+    }
+
+    function updateSidePanel(topoJSON) {
+        const recursos = topoJSON.recursos;
+        const nodes = topoJSON.topologia.nodes;
+        const edges = topoJSON.topologia.edges;
+
+        const totals = computeTotals(topoJSON);
+
+        document.getElementById('total-vms').textContent = nodes.length;
+        document.getElementById('total-connections').textContent = edges.length;
+        document.getElementById('total-internet').textContent = totals.withInternet;
+        document.getElementById('unique-images').textContent = totals.uniqueImages;
+
+        document.getElementById('total-cpu').textContent = totals.totalCPU;
+        document.getElementById('total-ram').textContent = totals.totalRAM + ' GB';
+        document.getElementById('total-disk').textContent = totals.totalDisk + ' GB';
+
+        renderVMsList(nodes, recursos);
+    }
+
+    function renderVMsList(nodesArr, recursos) {
+        const container = document.getElementById('vms-list');
+
+        if (!nodesArr.length) {
+            container.innerHTML = '<div class="empty-state">No hay VMs</div>';
+            return;
+        }
+
+        container.innerHTML = nodesArr.map(n => {
+            const cfg = recursos[n.id] || {};
+            const internetText = cfg.internet ? 'Sí' : 'No';
+            return `
+                <div class="vm-compact">
+                    <div class="vm-compact-header">
+                        <span class="vm-compact-name">${cfg.name || n.label || n.id}</span>
+                        <span class="vm-compact-flavour">${cfg.flavour}</span>
+                    </div>
+                    <div class="vm-compact-details">
+                        <span>💿 ${cfg.image}</span>
+                        <span>•</span>
+                        <span>${cfg.cpu}v</span>
+                        <span>•</span>
+                        <span>${cfg.ram}GB RAM</span>
+                        <span>•</span>
+                        <span>${cfg.disk}GB Disco</span>
+                        <span>•</span>
+                        <span>Internet: ${internetText}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function downloadJSONFromServer() {
+        try {
+            const res = await fetch(`/templates/${currentTemplateId}/export`, {
+                credentials: "include"
+            });
+            if (!res.ok) {
+                throw new Error("No se pudo descargar el JSON");
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `template_${currentTemplateId}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(err);
+            alert("❌ Error descargando JSON: " + err.message);
+        }
+    }
+</script>
+
+</body>
+</html>

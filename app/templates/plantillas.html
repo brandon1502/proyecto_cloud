@@ -3,114 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proyectos - Orquestador Privado</title>
+  <title>Plantillas - Orquestador Privado</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="../static/css/plantillas.css">
   <style>
     /* Ajustes para la tabla con bordes redondeados */
-    .table-wrapper {
-      overflow-x: auto;
-      overflow-y: visible;
-      border-radius: 0 0 15px 15px;
-    }
+    .table-wrapper { overflow-x: auto; overflow-y: visible; border-radius: 0 0 15px 15px; }
+    .table-container { border-radius: 15px; overflow: hidden; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: auto; }
+    th, td { padding: 12px; }
 
-    .table-container {
-      border-radius: 15px;
-      overflow: hidden;
-    }
+    /* Modal básico */
+    .modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; overflow:auto; background:rgba(0,0,0,0.5); }
+    .modal-content { background:#fff; margin:6% auto; padding:20px; border-radius:8px; width:90%; max-width:900px; box-shadow:0 6px 18px rgba(0,0,0,0.2); }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; }
+    .modal-body { margin-top:12px; max-height:60vh; overflow:auto; }
+    .modal-footer { margin-top:12px; text-align:right; }
+    .btn { padding:8px 12px; border-radius:6px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer; }
+    .btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+    .btn.danger { background:#ef4444; color:#fff; border-color:#ef4444; }
 
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      min-width: auto;
-    }
-
-    /* Bordes redondeados en las esquinas de la tabla */
-    thead tr:first-child th:first-child {
-      border-top-left-radius: 0;
-    }
-
-    thead tr:first-child th:last-child {
-      border-top-right-radius: 0;
-    }
-
-    tbody tr:last-child td:first-child {
-      border-bottom-left-radius: 15px;
-    }
-
-    tbody tr:last-child td:last-child {
-      border-bottom-right-radius: 15px;
-    }
-
-    /* Ajuste de anchos de columna más compactos */
-    th:nth-child(1), td:nth-child(1) { width: 15%; min-width: 140px; } /* Slice */
-    th:nth-child(2), td:nth-child(2) { width: 18%; min-width: 150px; } /* Descripción */
-    th:nth-child(3), td:nth-child(3) { width: 11%; min-width: 100px; } /* Creación */
-    th:nth-child(4), td:nth-child(4) { width: 11%; min-width: 100px; } /* Modificación */
-    th:nth-child(5), td:nth-child(5) { width: 7%; min-width: 60px; text-align: center; } /* vCPUs */
-    th:nth-child(6), td:nth-child(6) { width: 8%; min-width: 70px; text-align: center; } /* RAM */
-    th:nth-child(7), td:nth-child(7) { width: 8%; min-width: 70px; text-align: center; } /* Disco */
-    th:nth-child(8), td:nth-child(8) { width: 6%; min-width: 50px; text-align: center; } /* VMs */
-    th:nth-child(9), td:nth-child(9) { width: 11%; min-width: 120px; text-align: center; } /* Acciones */
-
-    /* Hacer texto más compacto */
-    td {
-      padding: 14px 12px;
-      font-size: 13px;
-    }
-
-    th {
-      padding: 12px 12px;
-      font-size: 13px;
-    }
-
-    /* Reducir tamaño de fechas */
-    td:nth-child(3), td:nth-child(4) {
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    
+    pre.json-view { background:#0f172a; color:#d1fae5; padding:12px; border-radius:6px; overflow:auto; }
+    textarea.json-edit { width:100%; height:320px; font-family:monospace; font-size:13px; }
   </style>
 </head>
 <body>
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <h2>
-        <div class="logo-icon">🔐</div>
-        <span>Orquestador</span>
-      </h2>
+      <h2><div class="logo-icon">🔐</div><span>Orquestador</span></h2>
       <button class="toggle-btn" id="toggleSidebar">◀</button>
     </div>
-
     <nav class="sidebar-menu">
-      <a href="/home" class="menu-item" id="inicioLink">
-        <span class="menu-icon">🏠</span>
-        <span>Inicio</span>
-      </a>
-      <a href="/plantillas" class="menu-item active" id="plantillasLink">
-        <span class="menu-icon">📝</span>
-        <span>Plantillas</span>
-      </a>
-
-      <a href="/projects" class="menu-item" id="proyectosLink">
-        <span class="menu-icon">📁</span>
-        <span>Proyectos</span>
-      </a>
+      <a href="/home" class="menu-item" id="inicioLink"><span class="menu-icon">🏠</span><span>Inicio</span></a>
+      <a href="/plantillas" class="menu-item active" id="plantillasLink"><span class="menu-icon">📝</span><span>Plantillas</span></a>
+      <a href="/projects" class="menu-item" id="proyectosLink"><span class="menu-icon">📁</span><span>Proyectos</span></a>
     </nav>
-
     <div class="sidebar-footer">
       <div class="divider"></div>
-      <a href="#" class="menu-item" id="changePasswordLink">
-        <span class="menu-icon">🔑</span>
-        <span>Cambiar Contraseña</span>
-      </a>
-      <a href="/auth/logout" class="menu-item" id="logoutLink">
-        <span class="menu-icon">🚪</span>
-        <span>Cerrar Sesión</span>
-      </a>
+      <a href="#" class="menu-item" id="changePasswordLink"><span class="menu-icon">🔑</span><span>Cambiar Contraseña</span></a>
+      <a href="/auth/logout" class="menu-item" id="logoutLink"><span class="menu-icon">🚪</span><span>Cerrar Sesión</span></a>
     </div>
   </aside>
 
@@ -118,28 +50,16 @@
   <main class="main-content">
     <div class="page-header">
       <h1>Plantillas</h1>
-      <button class="btn-new" id="newTopologyBtn">
-        <span>➕</span> Crear Nuevo Template
-      </button>
+      <button class="btn btn-primary" id="newTopologyBtn">➕ Crear Nuevo Template</button>
     </div>
 
     <div class="table-container">
       <div class="table-controls">
-        <div class="show-entries">
-          <span>Mostrar</span>
-          <select id="entriesSelect">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
+        <div class="show-entries"><span>Mostrar</span>
+          <select id="entriesSelect"><option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select>
           <span>entradas</span>
         </div>
-        
-        <div class="search-box">
-          <label>Buscar:</label>
-          <input type="text" id="searchInput" placeholder="Filtrar por nombre...">
-        </div>
+        <div class="search-box"><label>Buscar:</label><input type="text" id="searchInput" placeholder="Filtrar por nombre..."></div>
       </div>
 
       <div class="table-wrapper">
@@ -158,187 +78,181 @@
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr>
-              <td>TEL141_2025-2</td>
-              <td>Plantilla básica</td>
-              <td>2025-08-18</td>
-              <td>2025-09-15</td>
-              <td>8</td>
-              <td>16</td>
-              <td>120</td>
-              <td>3</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-action view" onclick="viewTemplate('20215433')">
-                    <i class="fa-solid fa-eye"></i>
-                    <span class="tooltip">Ver</span>
-                  </button>
-                  <button class="btn-action edit" onclick="editTemplate('20215433')">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span class="tooltip">Editar</span>
-                  </button>
-                  <button class="btn-action delete" onclick="deleteTemplate('20215433')">
-                    <i class="fa-solid fa-trash"></i>
-                    <span class="tooltip">Eliminar</span>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>TEL141_2025-1</td>
-              <td>Red empresarial</td>
-              <td>2025-07-15</td>
-              <td>2025-08-20</td>
-              <td>12</td>
-              <td>32</td>
-              <td>240</td>
-              <td>5</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-action view" onclick="viewTemplate('20215789')">
-                    <i class="fa-solid fa-eye"></i>
-                    <span class="tooltip">Ver</span>
-                  </button>
-                  <button class="btn-action edit" onclick="editTemplate('20215789')">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span class="tooltip">Editar</span>
-                  </button>
-                  <button class="btn-action delete" onclick="deleteTemplate('20215789')">
-                    <i class="fa-solid fa-trash"></i>
-                    <span class="tooltip">Eliminar</span>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>TEL141_2024-2</td>
-              <td>Alta disponibilidad</td>
-              <td>2025-06-20</td>
-              <td>2025-07-10</td>
-              <td>16</td>
-              <td>64</td>
-              <td>480</td>
-              <td>8</td>
-              <td>
-                <div class="action-buttons">
-                  <button class="btn-action view" onclick="viewTemplate('20214567')">
-                    <i class="fa-solid fa-eye"></i>
-                    <span class="tooltip">Ver</span>
-                  </button>
-                  <button class="btn-action edit" onclick="editTemplate('20214567')">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span class="tooltip">Editar</span>
-                  </button>
-                  <button class="btn-action delete" onclick="deleteTemplate('20214567')">
-                    <i class="fa-solid fa-trash"></i>
-                    <span class="tooltip">Eliminar</span>
-                  </button>
-                </div>
-              </td>
-            </tr>
+            <tr><td colspan="9" style="text-align:center;">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
 
       <div class="table-footer">
-        <div style="color: #64748b; font-size: 14px;">
-          Mostrando <span id="showingInfo">1 a 3 de 3</span> entradas
-        </div>
-        <div class="pagination">
-          <button id="prevBtn">Anterior</button>
-          <button class="active">1</button>
-          <button id="nextBtn">Siguiente</button>
-        </div>
+        <div style="color: #64748b; font-size: 14px;">Mostrando <span id="showingInfo">0</span> entradas</div>
+        <div class="pagination"><button id="prevBtn">Anterior</button><button class="active">1</button><button id="nextBtn">Siguiente</button></div>
       </div>
     </div>
   </main>
 
+  <!-- Modal: Ver plantilla -->
+  <div id="viewModal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="viewTitle">Ver Plantilla</h3>
+        <button class="btn" id="closeView">Cerrar</button>
+      </div>
+      <div class="modal-body">
+        <div><strong>Nombre:</strong> <span id="viewName"></span></div>
+        <div style="margin-top:8px;"><strong>Descripción:</strong> <span id="viewDesc"></span></div>
+        <hr />
+        <div><strong>JSON guardado:</strong></div>
+        <pre class="json-view" id="viewJson">Cargando...</pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="closeView2">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Editar plantilla -->
+  <div id="editModal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="editTitle">Editar Plantilla</h3>
+        <button class="btn" id="closeEdit">Cerrar</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:8px;"><label>Nombre</label><br><input type="text" id="editName" style="width:100%; padding:8px;"/></div>
+        <div style="margin-bottom:8px;"><label>Descripción</label><br><input type="text" id="editDesc" style="width:100%; padding:8px;"/></div>
+        <div><label>JSON (edite con cuidado)</label><br><textarea id="editJson" class="json-edit"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="cancelEdit">Cancelar</button>
+        <button class="btn primary" id="saveEdit">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-  // ====== Desplegar: guardar en DB (/slices) y reenviar JSON a tu amigo ======
-  deployBtn.addEventListener('click', async () => {
-    const tplId = selectedTemplateId;
-    const zone = document.querySelector('input[name="zone"]:checked')?.value || '';
-    const tpl = templatesById.get(String(tplId));
-    if (!tpl) return;
+    // Short helpers
+    const creds = { credentials: 'include', headers: { 'Content-Type': 'application/json' } };
 
-    // nombre del slice
-    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
-    const sliceName = `${tpl.name}-${stamp}`.slice(0, 150);
+    // Sidebar toggle
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed'); mainContent.classList.toggle('expanded'); toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+    });
 
-    const payloadSlice = {
-      template_id: Number(tplId),
-      az_hint: zone,
-      name: sliceName
-    };
+    // Navigation
+    document.getElementById('newTopologyBtn').addEventListener('click', () => window.location.href = '/plantillas/create');
+    document.getElementById('logoutLink').addEventListener('click', () => {});
 
-    deployBtn.disabled = true;
-    const oldText = deployBtn.textContent;
-    deployBtn.textContent = 'Desplegando…';
+    // Search
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase();
+      document.querySelectorAll('#tableBody tr').forEach(row => { row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none'; });
+    });
 
-    try {
-      // 1) Guardar slice en tu BD
-      const res = await fetch('/slices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payloadSlice)
-      });
-      if (!res.ok) {
-        const msg = await res.text().catch(() => '');
-        throw new Error(msg || `HTTP ${res.status}`);
-      }
-      const slice = await res.json();
+    // Modal wiring
+    const viewModal = document.getElementById('viewModal');
+    const editModal = document.getElementById('editModal');
+    function openModal(m) { m.style.display = 'block'; m.setAttribute('aria-hidden', 'false'); }
+    function closeModal(m) { m.style.display = 'none'; m.setAttribute('aria-hidden', 'true'); }
+    document.getElementById('closeView').addEventListener('click', () => closeModal(viewModal));
+    document.getElementById('closeView2').addEventListener('click', () => closeModal(viewModal));
+    document.getElementById('closeEdit').addEventListener('click', () => closeModal(editModal));
+    document.getElementById('cancelEdit').addEventListener('click', () => closeModal(editModal));
 
-      // 2) Reenviar JSON guardado a la API de tu amigo
-      const forwardRes = await fetch('/deployments/forward', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          template_id: Number(tplId),
-          az_hint: zone,
-          slice_id: slice?.slice_id ?? null
-        })
-      });
-
-      // Si falla el forward, igual el slice quedó guardado; notificamos claro.
-      if (!forwardRes.ok) {
-        const txt = await forwardRes.text().catch(() => '');
-        alert('⚠️ Slice creado, pero falló el envío a la API de despliegue: ' + (txt || forwardRes.status));
-      } else {
-        const respBody = await forwardRes.json().catch(() => ({}));
-        console.log('Respuesta API amigo:', respBody);
-        alert('✅ Despliegue enviado a la API de tu amigo');
-      }
-
-      // 3) Actualiza tabla visual local
-      const createdAt = slice.created_at
-        ? new Date(slice.created_at).toLocaleString()
-        : new Date().toLocaleString();
-
-      const desc = tpl.description
-        ? `${tpl.description} · ${zone.toUpperCase()}`
-        : `Zona: ${zone.toUpperCase()}`;
-
-      addProjectRow({
-        id: slice.slice_id,
-        name: slice.name,
-        description: desc,
-        createdAt,
-        status: (slice.status || 'PENDING').toUpperCase()
-      });
-
-      closeModal();
-    } catch (err) {
-      console.error(err);
-      alert('❌ Error al desplegar: ' + (err?.message || 'desconocido'));
-    } finally {
-      deployBtn.disabled = false;
-      deployBtn.textContent = oldText;
+    // View template
+    function viewTemplate(id) {
+      window.location.href = `/plantillas/${id}`;
     }
-  });
-</script>
 
+    // Edit template
+    function editTemplate(id) {
+      window.location.href = `/plantillas/${id}/edit`;
+    }
 
+    document.getElementById('saveEdit').addEventListener('click', async () => {
+      if (!editingId) return alert('No hay plantilla en edición');
+      const name = document.getElementById('editName').value.trim();
+      const description = document.getElementById('editDesc').value.trim();
+      const jsonText = document.getElementById('editJson').value.trim();
+      let jsonObj = null;
+      if (jsonText) {
+        try { jsonObj = JSON.parse(jsonText); } catch (e) { return alert('JSON inválido: ' + e.message); }
+      }
+
+      try {
+        const body = { name: name || undefined, description: description || undefined, json_template: jsonObj };
+        const res = await fetch(`/templates/${editingId}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!res.ok) {
+          const t = await res.text(); throw new Error(t || 'Error desconocido');
+        }
+        closeModal(editModal);
+        editingId = null;
+        await loadTemplates();
+        alert('Plantilla actualizada correctamente');
+      } catch (err) { alert('Error guardando plantilla: ' + err); console.error(err); }
+    });
+
+    // Delete template
+    async function deleteTemplate(id) {
+      if (!confirm(`¿Estás seguro de eliminar la plantilla ${id}? Esta acción es irreversible.`)) return;
+      try {
+        const res = await fetch(`/templates/${id}`, { method: 'DELETE', credentials: 'include' });
+        if (!res.ok) throw new Error(await res.text());
+        await loadTemplates();
+        alert('Plantilla eliminada');
+      } catch (err) { alert('Error eliminando plantilla: ' + err); console.error(err); }
+    }
+
+    // Download
+    function downloadTemplate(id) { window.location.href = `/templates/${id}/export`; }
+
+    // Load list
+    async function loadTemplates() {
+      try {
+        const res = await fetch('/templates/mostrar_plantilla', { credentials: 'include' });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        const tbody = document.getElementById('tableBody'); tbody.innerHTML = '';
+        if (!data.length) { tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">Sin plantillas registradas</td></tr>`; document.getElementById('showingInfo').textContent = '0'; return; }
+        data.forEach(t => {
+          const created = t.created_at ? new Date(t.created_at).toLocaleString() : '-';
+          const updated = t.updated_last_at ? new Date(t.updated_last_at).toLocaleString() : '-';
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${t.name}</td>
+            <td>${t.description || '-'}</td>
+            <td>${created}</td>
+            <td>${updated}</td>
+            <td style="text-align:center;">${t.sum_vcpu}</td>
+            <td style="text-align:center;">${Number(t.sum_ram_gb).toFixed(2)}</td>
+            <td style="text-align:center;">${Number(t.sum_disk_gb).toFixed(2)}</td>
+            <td style="text-align:center;">${t.vm_count}</td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn" title="Ver detalles y topología" onclick="viewTemplate(${t.template_id})">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+                <button class="btn" title="Editar plantilla y topología" onclick="editTemplate(${t.template_id})">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button class="btn" title="Eliminar plantilla" onclick="deleteTemplate(${t.template_id})">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+                
+              </div>
+            </td>`;
+          tbody.appendChild(row);
+        });
+        document.getElementById('showingInfo').textContent = data.length.toString();
+      } catch (err) { console.error('Error cargando templates', err); document.getElementById('tableBody').innerHTML = `<tr><td colspan="9" style="text-align:center;">Error al cargar plantillas</td></tr>`; }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadTemplates);
+
+    // Close modal by clicking outside
+    window.addEventListener('click', (e) => { if (e.target === viewModal) closeModal(viewModal); if (e.target === editModal) closeModal(editModal); });
+  </script>
 </body>
 </html>
