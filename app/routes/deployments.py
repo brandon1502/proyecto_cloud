@@ -74,3 +74,61 @@ async def forward_json_to_friend(
         return {"ok": True, "friend_status": resp.status_code, "friend_body": body}
     except httpx.RequestError as e:
         raise HTTPException(status_code=502, detail=f"No se pudo contactar a API de despliegue: {e}") 
+
+class TriggerRequest(BaseModel):
+    name: str
+    zone_hint: str
+    template_id: int
+    topology: dict  # esto será tu json_template entero
+
+@router.post("/trigger")
+def trigger_deployment(
+    body: TriggerRequest,
+    user = Depends(login_required)
+):
+    """
+    Este endpoint:
+    - recibe del frontend los datos del despliegue
+    - llama al servicio externo real (FRIEND_DEPLOY_API_URL)
+    - retorna lo que respondió ese servicio
+    """
+
+    try:
+        # lo que le mandas al "amigo" (worker de despliegue)
+        payload_external = {
+            "requester_user_id": user.user_id,    # quién pidió
+            "name": body.name,
+            "zone": body.zone_hint,
+            "template_id": body.template_id,
+            "topology": body.topology,            # <= el JSON enterito
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+        }
+
+        # si usas un token tipo API key/bearer interno:
+        if settings.FRIEND_DEPLOY_API_TOKEN:
+            headers["Authorization"] = f"Bearer {settings.FRIEND_DEPLOY_API_TOKEN}"
+
+        resp = requests.post(
+            settings.FRIEND_DEPLOY_API_URL,
+            json=payload_external,
+            headers=headers,
+            timeout=settings.HTTP_CLIENT_TIMEOUT,
+        )
+
+        if resp.status_code >= 400:
+            raise HTTPException(
+                status_code=502,
+                detail=f"El motor de despliegue rechazó la solicitud: {resp.text}"
+            )
+
+        # devolvemos al frontend lo que dijo el motor,
+        # ej: job_id, estado inicial, etc.
+        return resp.json()
+
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Timeout hablando con motor de despliegue")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

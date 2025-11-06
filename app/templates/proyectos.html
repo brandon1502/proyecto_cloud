@@ -392,7 +392,7 @@
     templateEmptyHint.style.display = 'none';
 
     try {
-      const res = await fetch('/templates', { credentials: 'include' });
+      const res = await fetch('/templates/mostrar_plantilla', { credentials: 'include' });
       if (!res.ok) throw new Error('No se pudieron cargar las plantillas');
       const data = await res.json();
 
@@ -447,67 +447,105 @@
 
   // ====== Desplegar: guardar en DB (/slices) ======
   deployBtn.addEventListener('click', async () => {
-    const tplId = selectedTemplateId;
-    const zone = document.querySelector('input[name="zone"]:checked')?.value || '';
-    const tpl = templatesById.get(String(tplId));
-    if (!tpl) return;
+  const tplId = selectedTemplateId;
+  const zone = document.querySelector('input[name="zone"]:checked')?.value || '';
+  const tplMeta = templatesById.get(String(tplId)); // resumen de la card
+  if (!tplId || !tplMeta) return;
 
-    // nombre del slice: <nombre-plantilla>-YYYYMMDDHHMMSS
-    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
-    const sliceName = `${tpl.name}-${stamp}`.slice(0, 150); // límite por esquema
+  // nombre del slice: <nombre-plantilla>-YYYYMMDDHHMMSS
+  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
+  const sliceName = `${tplMeta.name}-${stamp}`.slice(0, 150); // limite
 
-    const payload = {
+  deployBtn.disabled = true;
+  const oldText = deployBtn.textContent;
+  deployBtn.textContent = 'Desplegando…';
+
+  try {
+    // 1. obtener json_template completo del backend
+    const tplFull = await fetchTemplateDetail(tplId);
+    const jsonTemplate = tplFull.json_template;
+    if (!jsonTemplate) {
+      throw new Error('La plantilla no tiene json_template');
+    }
+
+    // 2. pedir al backend que llame al orquestador amigo
+    //    /deployments/trigger sería un endpoint interno tuyo
+    const externalDeployPayload = {
+      name: sliceName,     // opcional: le dices al worker cómo quieres llamar este despliegue
+      zone_hint: zone,     // opcional: la zona seleccionada en UI
       template_id: Number(tplId),
-      az_hint: zone,          // 'zone1' / 'zone2' / 'zone3' (tu backend lo resuelve)
-      name: sliceName
-      // No mandamos nada más: el backend deja NULL los opcionales
+      topology: jsonTemplate, // acá va tal cual
     };
 
-    deployBtn.disabled = true;
-    const oldText = deployBtn.textContent;
-    deployBtn.textContent = 'Desplegando…';
+    const triggerRes = await fetch('/deployments/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(externalDeployPayload),
+    });
 
-    try {
-      const res = await fetch('/slices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',            // envía la cookie de sesión
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const msg = await res.text().catch(() => '');
-        throw new Error(msg || `HTTP ${res.status}`);
-      }
-
-      const slice = await res.json();
-
-      const createdAt = slice.created_at
-        ? new Date(slice.created_at).toLocaleString()
-        : new Date().toLocaleString();
-
-      const desc = tpl.description
-        ? `${tpl.description} · ${zone.toUpperCase()}`
-        : `Zona: ${zone.toUpperCase()}`;
-
-      addProjectRow({
-        id: slice.slice_id,                                   // id real en DB
-        name: slice.name,                                     // nombre guardado
-        description: desc,
-        createdAt,
-        status: (slice.status || 'PENDING').toUpperCase()
-      });
-
-      alert('✅ Despliegue registrado en la base de datos');
-      closeModal();
-    } catch (err) {
-      console.error(err);
-      alert('❌ Error al desplegar: ' + (err?.message || 'desconocido'));
-    } finally {
-      deployBtn.disabled = false;
-      deployBtn.textContent = oldText;
+    if (!triggerRes.ok) {
+      const msg = await triggerRes.text().catch(() => '');
+      throw new Error(msg || `Error al invocar despliegue externo (HTTP ${triggerRes.status})`);
     }
-  });
+
+    // opcionalmente puedes leer respuesta del worker
+    const triggerInfo = await triggerRes.json();
+    // Ej: triggerInfo = { worker_job_id: "abc123", status: "ACCEPTED" }
+
+    // 3. Registrar el slice en tu propia BD, para mostrarlo en tabla
+    const recordPayload = {
+      template_id: Number(tplId),
+      az_hint: zone,
+      name: sliceName,
+      // podrías guardar info del worker también:
+      worker_job_id: triggerInfo.worker_job_id || null,
+    };
+
+    const recordRes = await fetch('/slices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(recordPayload),
+    });
+
+    if (!recordRes.ok) {
+      const msg = await recordRes.text().catch(() => '');
+      throw new Error(msg || `Error guardando slice en DB (HTTP ${recordRes.status})`);
+    }
+
+    const slice = await recordRes.json();
+
+    // 4. actualizar tabla en el frontend
+    const createdAt = slice.created_at
+      ? new Date(slice.created_at).toLocaleString()
+      : new Date().toLocaleString();
+
+    const desc = tplMeta.description
+      ? `${tplMeta.description} · ${zone.toUpperCase()}`
+      : `Zona: ${zone.toUpperCase()}`;
+
+    addProjectRow({
+      id: slice.slice_id,
+      name: slice.name,
+      description: desc,
+      createdAt,
+      status: (slice.status || 'PENDING').toUpperCase(),
+    });
+
+    alert('✅ Despliegue enviado y registrado');
+    closeModal();
+
+  } catch (err) {
+    console.error(err);
+    alert('❌ Error al desplegar: ' + (err?.message || 'desconocido'));
+  } finally {
+    deployBtn.disabled = false;
+    deployBtn.textContent = oldText;
+  }
+});
+
+
 
   // Tabla: agregar fila
   function addProjectRow({ id, name, description, createdAt, status }) {
@@ -572,6 +610,17 @@ async function loadSlices() {
     console.error(e);
     alert('❌ Error cargando tus proyectos');
   }
+}
+
+
+async function fetchTemplateDetail(tplId) {
+  const res = await fetch(`/templates/${tplId}`, {
+    credentials: 'include', // manda cookie/sesión si es necesario
+  });
+  if (!res.ok) {
+    throw new Error(`No se pudo obtener template ${tplId}`);
+  }
+  return await res.json(); // { template_id, name, ..., json_template: {...} }
 }
 
 
