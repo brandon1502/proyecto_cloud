@@ -1,11 +1,9 @@
 # app/security.py
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import base64
 import hashlib
 import os
-import jwt
 from passlib.context import CryptContext
-from app.settings import settings
 
 # Hash de contraseñas sin dolores de cabeza con bcrypt
 pwd_ctx = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -15,16 +13,6 @@ def hash_password(plain: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_ctx.verify(plain, hashed)
-
-def make_jwt(sub: str, role: str = "user", uid: int | None = None):
-    exp = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
-    payload = {"sub": sub, "role": role, "exp": exp}
-    if uid is not None:
-        payload["uid"] = uid
-    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
-
-def decode_jwt(token: str):
-    return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALG])
 
 # ========= helpers que usa services/users.py =========
 

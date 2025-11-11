@@ -1,6 +1,7 @@
 # app/routes/slices_api.py
 from typing import Optional, List
 from datetime import datetime
+import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, constr
@@ -144,3 +145,79 @@ def create_slice(payload: SliceCreate, db: Session = Depends(get_db), user=Depen
     db.commit()
     db.refresh(new_slice)
     return SliceOut.model_validate(new_slice)
+
+
+@router.post("/{slice_id}/destroy", status_code=status.HTTP_200_OK)
+async def destroy_slice(
+    slice_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(login_required)
+):
+    """
+    Envía petición de destrucción al servidor de despliegue y elimina el slice de la BD.
+    La operación de destrucción se ejecuta en background en el servidor.
+    """
+    # Verificar que el slice existe y pertenece al usuario
+    slice_obj = db.execute(
+        select(Slice).where(
+            Slice.slice_id == slice_id,
+            Slice.owner_id == user.user_id
+        )
+    ).scalar_one_or_none()
+    
+    if not slice_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Slice no encontrado o no tienes permisos"
+        )
+    
+    # Guardar nombre para el mensaje de respuesta
+    slice_name = slice_obj.name
+    
+    # Enviar POST al servidor de destrucción con timeout corto (5s para la respuesta inicial)
+    deploy_url = "http://10.20.12.209:8581/destroy"
+    
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                deploy_url,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code != 200:
+                error_detail = response.text
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Error del servidor de despliegue: {error_detail}"
+                )
+            
+            result = response.json()
+            
+            # Eliminar el slice de la base de datos
+            db.delete(slice_obj)
+            db.commit()
+            
+            return {
+                "message": f"Slice '{slice_name}' eliminado exitosamente (destrucción en progreso)",
+                "slice_id": slice_id,
+                "deployment_response": result
+            }
+            
+    except httpx.TimeoutException:
+        # Si da timeout, igual eliminamos el slice de la BD 
+        # porque la destrucción está procesándose en el servidor
+        db.delete(slice_obj)
+        db.commit()
+        
+        return {
+            "message": f"Slice '{slice_name}' eliminado de la base de datos (destrucción en progreso)",
+            "slice_id": slice_id,
+            "note": "La operación de destrucción continúa en el servidor aunque no haya respondido a tiempo"
+        }
+        
+    except httpx.RequestError as e:
+        # Error de conexión: NO eliminamos de la BD
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Error de conexión con servidor de despliegue: {str(e)}"
+        )

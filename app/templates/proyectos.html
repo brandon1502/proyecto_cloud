@@ -4,8 +4,35 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Proyectos - Orquestador Privado</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <link rel="stylesheet" href="../static/css/proyectos.css" />
   <style>
+    /* ===== Action buttons ===== */
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .action-buttons .btn {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #475569;
+      font-size: 14px;
+    }
+    .action-buttons .btn:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+      transform: translateY(-2px);
+    }
+    .action-buttons .btn i {
+      pointer-events: none;
+    }
+    
     /* ===== Modal ===== */
     .modal-overlay {
       display:none; position:fixed; inset:0;
@@ -104,6 +131,54 @@
 
     @keyframes fadeIn{ from{opacity:0} to{opacity:1} }
     @keyframes slideUp{ from{transform:translateY(30px); opacity:0} to{transform:translateY(0); opacity:1} }
+
+    /* ===== Custom SweetAlert2 Styles ===== */
+    .swal-custom-popup {
+      border-radius: 12px !important;
+      padding: 28px !important;
+      box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12) !important;
+      border: 1px solid #e2e8f0 !important;
+    }
+    .swal-custom-title {
+      font-size: 20px !important;
+      font-weight: 600 !important;
+      color: #0f172a !important;
+      margin-bottom: 16px !important;
+    }
+    .swal-custom-html {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .swal-custom-confirm {
+      background: #0f172a !important;
+      color: white !important;
+      border: none !important;
+      border-radius: 8px !important;
+      padding: 10px 24px !important;
+      font-weight: 500 !important;
+      font-size: 14px !important;
+      transition: all 0.2s !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15) !important;
+    }
+    .swal-custom-confirm:hover {
+      background: #1e293b !important;
+      transform: translateY(-1px) !important;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2) !important;
+    }
+    .swal-custom-cancel {
+      background: white !important;
+      color: #475569 !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 8px !important;
+      padding: 10px 24px !important;
+      font-weight: 500 !important;
+      font-size: 14px !important;
+      transition: all 0.2s !important;
+    }
+    .swal-custom-cancel:hover {
+      background: #f8fafc !important;
+      border-color: #cbd5e1 !important;
+    }
   </style>
 </head>
 <body>
@@ -154,6 +229,7 @@
             <th>Descripción</th>
             <th>Creación</th>
             <th>Estado</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -525,8 +601,21 @@
       status: (slice.status || 'PENDING').toUpperCase(),
     });
 
-    alert('✅ Despliegue enviado y registrado');
-    closeModal();
+    // Mostrar SweetAlert2 personalizado y luego cerrar el modal
+    Swal.fire({
+      title: 'Despliegue enviado',
+      html: `<p style="margin:0; color:#475569; font-size:14px;">El despliegue fue enviado y registrado.</p>`,
+      icon: 'success',
+      confirmButtonText: 'Entendido',
+      customClass: {
+        popup: 'swal-custom-popup',
+        title: 'swal-custom-title',
+        confirmButton: 'swal-custom-confirm'
+      },
+      buttonsStyling: false
+    }).then(() => {
+      closeModal();
+    });
 
   } catch (err) {
     console.error('Error completo:', err);
@@ -542,12 +631,21 @@
   // Tabla: agregar fila
   function addProjectRow({ id, name, description, createdAt, status }) {
     const tr = document.createElement('tr');
-    tr.onclick = () => window.location.href = `/projects/${id}`;
     tr.innerHTML = `
       <td>${name}</td>
       <td>${description || '-'}</td>
       <td>${createdAt}</td>
       <td><span class="status-badge ${statusClass(status)}">${status}</span></td>
+      <td>
+        <div class="action-buttons">
+          <button class="btn" title="Ver detalles del slice" onclick="viewSlice(${id})">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+          <button class="btn" title="Destruir slice" onclick="destroySlice(${id}, '${name}')">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </td>
     `;
     tableBody.appendChild(tr);
     updateShowingInfo();
@@ -615,9 +713,166 @@ async function fetchTemplateDetail(tplId) {
   return await res.json(); // { template_id, name, ..., json_template: {...} }
 }
 
+// ===== Ver detalles del slice =====
+function viewSlice(sliceId) {
+  // Redirigir a una página de detalles (puedes crear esta vista después)
+  window.location.href = `/projects/${sliceId}`;
+}
+
+// ===== Destruir slice =====
+async function destroySlice(sliceId, sliceName) {
+  // Confirmación con SweetAlert2 personalizado
+  const result = await Swal.fire({
+    title: 'Confirmar destrucción',
+    html: `
+      <div style="text-align: left; padding: 8px 0;">
+        <p style="margin: 0 0 16px 0; color: #1e293b; font-size: 15px;">
+          Estás a punto de destruir el slice:
+        </p>
+        <div style="background: #f8fafc; border-left: 3px solid #94a3b8; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px;">
+          <strong style="color: #0f172a; font-size: 15px;">${sliceName}</strong>
+        </div>
+        <p style="margin: 0; color: #64748b; font-size: 14px; line-height: 1.5;">
+          Esta acción es permanente y no se puede deshacer.
+        </p>
+      </div>
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#0f172a',
+    cancelButtonColor: '#e2e8f0',
+    confirmButtonText: 'Destruir',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    focusCancel: true,
+    customClass: {
+      popup: 'swal-custom-popup',
+      title: 'swal-custom-title',
+      htmlContainer: 'swal-custom-html',
+      confirmButton: 'swal-custom-confirm',
+      cancelButton: 'swal-custom-cancel',
+    },
+    buttonsStyling: false,
+  });
+
+  if (!result.isConfirmed) return;
+
+  // Mostrar loading elegante
+  Swal.fire({
+    title: 'Procesando...',
+    html: `
+      <div style="padding: 20px 0;">
+        <p style="margin: 0; color: #64748b; font-size: 14px;">
+          Enviando solicitud de destrucción para <strong style="color: #0f172a;">${sliceName}</strong>
+        </p>
+      </div>
+    `,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    customClass: {
+      popup: 'swal-custom-popup',
+      title: 'swal-custom-title',
+    },
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+  
+  try {
+    const res = await fetch(`/slices/${sliceId}/destroy`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ detail: 'Error desconocido' }));
+      throw new Error(errorData.detail || `Error HTTP ${res.status}`);
+    }
+
+    const response = await res.json();
+    console.log('Respuesta del servidor de destrucción:', response);
+
+    await loadSlices();
+
+    // Mensaje de éxito elegante
+    if (response.note) {
+      await Swal.fire({
+        title: 'Destrucción iniciada',
+        html: `
+          <div style="text-align: left; padding: 8px 0;">
+            <p style="margin: 0 0 12px 0; color: #1e293b; font-size: 14px;">
+              El slice ha sido eliminado de la base de datos y la destrucción está en progreso.
+            </p>
+            <div style="background: #f8fafc; border-left: 3px solid #60a5fa; padding: 10px 14px; border-radius: 6px;">
+              <p style="margin: 0; color: #475569; font-size: 13px; line-height: 1.4;">
+                ${response.note}
+              </p>
+            </div>
+          </div>
+        `,
+        icon: 'info',
+        confirmButtonText: 'Entendido',
+        customClass: {
+          popup: 'swal-custom-popup',
+          title: 'swal-custom-title',
+          confirmButton: 'swal-custom-confirm',
+        },
+        buttonsStyling: false,
+      });
+    } else {
+      await Swal.fire({
+        title: 'Completado',
+        html: `
+          <p style="margin: 0; color: #1e293b; font-size: 14px;">
+            El slice <strong>${sliceName}</strong> ha sido eliminado exitosamente.
+          </p>
+        `,
+        icon: 'success',
+        timer: 2500,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'swal-custom-popup',
+          title: 'swal-custom-title',
+        },
+      });
+    }
+
+  } catch (err) {
+    console.error('Error destruyendo slice:', err);
+    await Swal.fire({
+      title: 'Error al destruir',
+      html: `
+        <div style="text-align: left; padding: 8px 0;">
+          <p style="margin: 0 0 12px 0; color: #1e293b; font-size: 14px;">
+            No se pudo completar la destrucción del slice.
+          </p>
+          <div style="background: #fef2f2; border-left: 3px solid #ef4444; padding: 10px 14px; border-radius: 6px;">
+            <code style="color: #dc2626; font-size: 13px; font-family: 'Courier New', monospace;">
+              ${err.message}
+            </code>
+          </div>
+        </div>
+      `,
+      icon: 'error',
+      confirmButtonText: 'Cerrar',
+      customClass: {
+        popup: 'swal-custom-popup',
+        title: 'swal-custom-title',
+        confirmButton: 'swal-custom-confirm',
+      },
+      buttonsStyling: false,
+    });
+  }
+}
+
 
 
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 </body>
 </html>

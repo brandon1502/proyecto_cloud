@@ -6,10 +6,9 @@ from app.models import User, ApiToken
 from app.security import (
     verify_password,
     hash_password,
-    make_jwt,
-    decode_jwt,
     sha256_hex,
 )
+from app.jwt_utils import create_access_token, verify_token
 from app.settings import settings
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -45,13 +44,18 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     return u
 
 def issue_session_token(db: Session, user: User, client_ip: str | None = None) -> str:
-    # 1) genera JWT (string)
-    jwt_token = make_jwt(sub=str(user.user_id), role="user")
+    # 1) genera JWT (string) - sub debe ser string según estándar JWT
+    jwt_token = create_access_token(data={"sub": str(user.user_id)})
 
-    # 2) lee exp del JWT
-    payload = decode_jwt(jwt_token)
-    exp_ts = payload.get("exp")
-    expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else None
+    # 2) lee exp del JWT - decodificar directamente sin verify_token
+    try:
+        from jose import jwt
+        from app.jwt_utils import SECRET_KEY, ALGORITHM
+        payload = jwt.decode(jwt_token, SECRET_KEY, algorithms=[ALGORITHM])
+        exp_ts = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc) if exp_ts else None
+    except Exception:
+        expires_at = datetime.now(timezone.utc)
 
     # 3) guarda hash en api_tokens
     token_hash = sha256_hex(jwt_token)

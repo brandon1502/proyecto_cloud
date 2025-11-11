@@ -3,8 +3,8 @@ uvicorn[standard]
 sqlalchemy
 pymysql
 cryptography
-passlib
-PyJWT
+passlib[bcrypt]
+python-jose[cryptography]
 jinja2
 python-multipart
 pydantic-settings
