@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS `orchestrator`.`templates` (
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_last_at` TIMESTAMP NULL DEFAULT NULL,
   `json_template` JSON NULL,
+  `json_template_despliegue` JSON NULL,
   PRIMARY KEY (`template_id`),
   UNIQUE INDEX `uq_templates_owner_name` (`user_id` ASC, `name` ASC) VISIBLE,
   INDEX `fk_templates_owner` (`user_id` ASC) VISIBLE,

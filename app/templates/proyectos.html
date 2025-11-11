@@ -461,20 +461,13 @@
   deployBtn.textContent = 'Desplegando…';
 
   try {
-    // 1. obtener json_template completo del backend
-    const tplFull = await fetchTemplateDetail(tplId);
-    const jsonTemplate = tplFull.json_template;
-    if (!jsonTemplate) {
-      throw new Error('La plantilla no tiene json_template');
-    }
-
-    // 2. pedir al backend que llame al orquestador amigo
-    //    /deployments/trigger sería un endpoint interno tuyo
+    // 1. Pedir al backend que obtenga el json_template y lo envíe al servidor de despliegue
+    //    El backend ya NO necesita que le envíes topology, él lo busca en la BD
     const externalDeployPayload = {
-      name: sliceName,     // opcional: le dices al worker cómo quieres llamar este despliegue
-      zone_hint: zone,     // opcional: la zona seleccionada en UI
+      name: sliceName,
+      zone_hint: zone,
       template_id: Number(tplId),
-      topology: jsonTemplate, // acá va tal cual
+      // ❌ YA NO enviar topology aquí, el backend lo obtiene de la BD
     };
 
     const triggerRes = await fetch('/deployments/trigger', {
@@ -485,20 +478,19 @@
     });
 
     if (!triggerRes.ok) {
-      const msg = await triggerRes.text().catch(() => '');
-      throw new Error(msg || `Error al invocar despliegue externo (HTTP ${triggerRes.status})`);
+      const errorData = await triggerRes.json().catch(() => ({ detail: 'Error desconocido' }));
+      throw new Error(errorData.detail || `Error HTTP ${triggerRes.status}`);
     }
 
-    // opcionalmente puedes leer respuesta del worker
+    // Leer respuesta del servidor de despliegue
     const triggerInfo = await triggerRes.json();
-    // Ej: triggerInfo = { worker_job_id: "abc123", status: "ACCEPTED" }
+    console.log('Respuesta del servidor de despliegue:', triggerInfo);
 
-    // 3. Registrar el slice en tu propia BD, para mostrarlo en tabla
+    // 2. Registrar el slice en tu propia BD, para mostrarlo en tabla
     const recordPayload = {
       template_id: Number(tplId),
       az_hint: zone,
       name: sliceName,
-      // podrías guardar info del worker también:
       worker_job_id: triggerInfo.worker_job_id || null,
     };
 
@@ -510,13 +502,13 @@
     });
 
     if (!recordRes.ok) {
-      const msg = await recordRes.text().catch(() => '');
-      throw new Error(msg || `Error guardando slice en DB (HTTP ${recordRes.status})`);
+      const errorData = await recordRes.json().catch(() => ({ detail: 'Error desconocido' }));
+      throw new Error(errorData.detail || `Error guardando slice (HTTP ${recordRes.status})`);
     }
 
     const slice = await recordRes.json();
 
-    // 4. actualizar tabla en el frontend
+    // 3. Actualizar tabla en el frontend
     const createdAt = slice.created_at
       ? new Date(slice.created_at).toLocaleString()
       : new Date().toLocaleString();
@@ -537,7 +529,7 @@
     closeModal();
 
   } catch (err) {
-    console.error(err);
+    console.error('Error completo:', err);
     alert('❌ Error al desplegar: ' + (err?.message || 'desconocido'));
   } finally {
     deployBtn.disabled = false;

@@ -174,6 +174,7 @@ def create_template(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(ex))
 
+
 @router.get("/mostrar_plantilla")
 def list_templates(
     db: Session = Depends(get_db),

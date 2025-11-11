@@ -105,7 +105,6 @@ class Template(Base):
 
     # 👇 NUEVO: guarda el JSON generado
     json_template = Column(JSON, nullable=True)
-
     owner = relationship("User", back_populates="templates")
     vms = relationship("TemplateVM", back_populates="template", cascade="all, delete-orphan")
     edges = relationship("TemplateEdge", back_populates="template", cascade="all, delete-orphan")

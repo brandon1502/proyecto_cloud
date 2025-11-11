@@ -678,13 +678,13 @@
                 <label>Flavour</label>
                 <select id="vm-flavour" onchange="updateFlavourSummary()">
                     <option value="" disabled selected>Seleccionar Flavour</option>
-                    <option value="mini">mini</option>
-                    <option value="nano">nano</option>
-                    <option value="micro">micro</option>
-                    <option value="small">small</option>
-                    <option value="medium">medium</option>
-                    <option value="large">large</option>
-                    <option value="xlarge">xlarge</option>
+                    <option value="nano">nano (1 vCPU, 1 GB RAM, 2 GB Disco)</option>
+                    <option value="mini">mini (1 vCPU, 2 GB RAM, 3 GB Disco)</option>
+                    <option value="micro">micro (2 vCPU, 2 GB RAM, 4 GB Disco)</option>
+                    <option value="small">small (2 vCPU, 4 GB RAM, 6 GB Disco)</option>
+                    <option value="medium">medium (4 vCPU, 8 GB RAM, 8 GB Disco)</option>
+                    <option value="large">large (8 vCPU, 12 GB RAM, 10 GB Disco)</option>
+                    <option value="xlarge">xlarge (16 vCPU, 16 GB RAM, 12 GB Disco)</option>
                 </select>
             </div>
 
@@ -926,7 +926,7 @@ function randomXY() {
       name: label,
       flavour: 'small',
       cpu: 2,
-      ram: 1,
+      ram: 4,
       disk: 6,
       image: 'Ubuntu',
       internet: false
@@ -1297,7 +1297,7 @@ function randomXY() {
                 name: name,
                 flavour: 'small',
                 cpu: 2,
-                ram: 1,
+                ram: 4,
                 disk: 6,
                 image: 'Ubuntu',
                 internet: false
@@ -1527,7 +1527,6 @@ function confirmSaveTopology() {
     return res.json();
   })
   .then((data) => {
-    alert("✅ Template guardado correctamente");
     window.location.href = "/plantillas";  // redirige
   })
   .catch((err) => {
@@ -1575,7 +1574,13 @@ function confirmSaveTopology() {
       // Opcional: reiniciar opciones y dejar un placeholder
       sel.innerHTML = '<option value="" disabled selected>Seleccionar Flavour</option>';
 
-      data.forEach(f => {
+      // Ordenar flavours en el orden deseado
+      const order = ['nano', 'mini', 'micro', 'small', 'medium', 'large', 'xlarge'];
+      const sortedData = data.sort((a, b) => {
+        return order.indexOf(a.name) - order.indexOf(b.name);
+      });
+
+      sortedData.forEach(f => {
         FLAVOURS[f.name] = {
           cpu: f.vcpu,
           ram: Number(f.ram_gb),
@@ -1583,7 +1588,8 @@ function confirmSaveTopology() {
         };
         const opt = document.createElement('option');
         opt.value = f.name;
-        opt.textContent = f.name;
+        // Mostrar recursos directamente en la opción
+        opt.textContent = `${f.name} (${f.vcpu} vCPU, ${Number(f.ram_gb)} GB RAM, ${Number(f.disk_gb)} GB Disco)`;
         sel.appendChild(opt);
       });
 
