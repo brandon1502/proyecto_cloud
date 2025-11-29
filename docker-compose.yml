@@ -45,6 +45,26 @@ services:
       - "8080:80"
     networks: [backend]
 
+  resources_api:
+    build:
+      context: ./resources_api
+      dockerfile: Dockerfile
+    container_name: resources_api
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: orch
+      DB_PASSWORD: orchpass
+      DB_NAME: orchestrator
+    depends_on:
+      - db
+    volumes:
+      - ./resources_api:/app/resources_api
+    networks: [backend]
+
 volumes:
   mysql_data:
 

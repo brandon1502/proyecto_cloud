@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 # Configuración JWT
 SECRET_KEY = "yEP4dsRJFHyHUky9C1Kr-KkKsFlyxgLUqhS3YOzYRzdKxvfQRB4-mZQ1YivNS5KiGs-QEWTgK-D_ZTfbJBwazg"  
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 horas
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -44,6 +44,7 @@ def verify_token(token: str) -> int:
     
     Returns:
         user_id del token
+    
     
     Raises:
         HTTPException: Si el token es inválido o expirado

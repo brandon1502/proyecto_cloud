@@ -50,3 +50,19 @@ def edit_template_page(request: Request, template_id: int, user = Depends(login_
 @router.get("/projects", response_class=HTMLResponse)
 def projects_page(request: Request, user = Depends(login_required)):
     return templates.TemplateResponse("proyectos.html", {"request": request, "user": user})
+
+@router.get("/projects/{slice_id}", response_class=HTMLResponse)
+def view_project_page(request: Request, slice_id: int, user = Depends(login_required)):
+    return templates.TemplateResponse("ver_proyecto.html", {
+        "request": request,
+        "user": user,
+        "slice_id": slice_id
+    })
+
+@router.get("/vnc/{vm_id}", response_class=HTMLResponse)
+def vnc_viewer_page(request: Request, vm_id: int, user = Depends(login_required)):
+    return templates.TemplateResponse("vnc_viewer.html", {
+        "request": request,
+        "user": user,
+        "vm_id": vm_id
+    })

@@ -71,12 +71,20 @@
       }
     })();
 
-    // Prevención de doble envío
+    // Prevención de doble envío mejorada
     (function () {
       const form = document.getElementById('loginForm');
       const btn = document.getElementById('submitBtn');
       if (!form || !btn) return;
-      form.addEventListener('submit', () => {
+
+      let submitted = false;
+
+      form.addEventListener('submit', function(e) {
+        if (submitted) {
+          e.preventDefault();
+          return false;
+        }
+        submitted = true;
         btn.disabled = true;
         btn.textContent = 'Ingresando...';
       });

@@ -149,7 +149,6 @@ CREATE TABLE IF NOT EXISTS `orchestrator`.`templates` (
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_last_at` TIMESTAMP NULL DEFAULT NULL,
   `json_template` JSON NULL,
-  `json_template_despliegue` JSON NULL,
   PRIMARY KEY (`template_id`),
   UNIQUE INDEX `uq_templates_owner_name` (`user_id` ASC, `name` ASC) VISIBLE,
   INDEX `fk_templates_owner` (`user_id` ASC) VISIBLE,
@@ -418,6 +417,93 @@ CREATE TABLE IF NOT EXISTS `orchestrator`.`vm_console_tokens` (
     REFERENCES `orchestrator`.`users` (`user_id`)
     ON DELETE CASCADE)
 ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `orchestrator`.`vlans`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `orchestrator`.`vlans` (
+  `vlan_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `vlan_number` INT NOT NULL,
+  `az_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `is_used` TINYINT(1) NOT NULL DEFAULT '0',
+  `slice_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `description` VARCHAR(255) NULL DEFAULT NULL,
+  `reserved_at` TIMESTAMP NULL DEFAULT NULL,
+  `reserved_by` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `released_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`vlan_id`),
+  UNIQUE INDEX `uq_vlan_number_az` (`vlan_number` ASC, `az_id` ASC) VISIBLE,
+  INDEX `idx_vlans_is_used` (`is_used` ASC) VISIBLE,
+  INDEX `fk_vlans_az` (`az_id` ASC) VISIBLE,
+  INDEX `fk_vlans_slice` (`slice_id` ASC) VISIBLE,
+  INDEX `fk_vlans_reserved_by` (`reserved_by` ASC) VISIBLE,
+  CONSTRAINT `fk_vlans_az`
+    FOREIGN KEY (`az_id`)
+    REFERENCES `orchestrator`.`availability_zones` (`az_id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_vlans_slice`
+    FOREIGN KEY (`slice_id`)
+    REFERENCES `orchestrator`.`slices` (`slice_id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_vlans_reserved_by`
+    FOREIGN KEY (`reserved_by`)
+    REFERENCES `orchestrator`.`users` (`user_id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE
+) ENGINE=InnoDB
+DEFAULT CHARACTER SET = utf8mb4
+COLLATE = utf8mb4_0900_ai_ci;
+
+
+-- -----------------------------------------------------
+-- Table `orchestrator`.`vnc_ports`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `orchestrator`.`vnc_ports` (
+  `vnc_port_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `port_number` INT NOT NULL,
+  `az_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `is_used` TINYINT(1) NOT NULL DEFAULT '0',
+  `vm_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `slice_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `description` VARCHAR(255) NULL DEFAULT NULL,
+  `reserved_at` TIMESTAMP NULL DEFAULT NULL,
+  `reserved_by` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `released_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`vnc_port_id`),
+  UNIQUE INDEX `uq_vnc_port_number_az` (`port_number` ASC, `az_id` ASC) VISIBLE,
+  INDEX `idx_vnc_ports_is_used` (`is_used` ASC) VISIBLE,
+  INDEX `fk_vnc_ports_az` (`az_id` ASC) VISIBLE,
+  INDEX `fk_vnc_ports_vm` (`vm_id` ASC) VISIBLE,
+  INDEX `fk_vnc_ports_slice` (`slice_id` ASC) VISIBLE,
+  INDEX `fk_vnc_ports_reserved_by` (`reserved_by` ASC) VISIBLE,
+  CONSTRAINT `fk_vnc_ports_az`
+    FOREIGN KEY (`az_id`)
+    REFERENCES `orchestrator`.`availability_zones` (`az_id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_vnc_ports_vm`
+    FOREIGN KEY (`vm_id`)
+    REFERENCES `orchestrator`.`vms` (`vm_id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_vnc_ports_slice`
+    FOREIGN KEY (`slice_id`)
+    REFERENCES `orchestrator`.`slices` (`slice_id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_vnc_ports_reserved_by`
+    FOREIGN KEY (`reserved_by`)
+    REFERENCES `orchestrator`.`users` (`user_id`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE
+) ENGINE=InnoDB
 DEFAULT CHARACTER SET = utf8mb4
 COLLATE = utf8mb4_0900_ai_ci;
 

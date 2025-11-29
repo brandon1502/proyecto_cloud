@@ -147,6 +147,68 @@ def create_slice(payload: SliceCreate, db: Session = Depends(get_db), user=Depen
     return SliceOut.model_validate(new_slice)
 
 
+@router.get("/{slice_id}/details")
+async def get_slice_details(
+    slice_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(login_required)
+):
+    """
+    Obtiene todos los detalles de un slice desplegado incluyendo VMs, VLANs y puertos VNC.
+    """
+    # Verificar que el slice existe y pertenece al usuario
+    slice_obj = db.execute(
+        select(Slice).where(
+            Slice.slice_id == slice_id,
+            Slice.owner_id == user.user_id
+        )
+    ).scalar_one_or_none()
+    
+    if not slice_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Slice no encontrado o no tienes permisos"
+        )
+    
+    # Obtener VMs, VLANs y puertos VNC del Resources API
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Obtener VMs
+            vms_response = await client.get(
+                f"http://10.20.12.26:8001/api/v1/vms/?slice_id={slice_id}"
+            )
+            vms = vms_response.json() if vms_response.status_code == 200 else []
+            
+            # Obtener VLANs
+            vlans_response = await client.get(
+                f"http://10.20.12.26:8001/api/v1/vlans/?slice_id={slice_id}"
+            )
+            vlans = vlans_response.json() if vlans_response.status_code == 200 else []
+            
+            # Obtener puertos VNC
+            vnc_response = await client.get(
+                f"http://10.20.12.26:8001/api/v1/vnc-ports/?slice_id={slice_id}"
+            )
+            vnc_ports = vnc_response.json() if vnc_response.status_code == 200 else []
+            
+            return {
+                "slice_id": slice_obj.slice_id,
+                "name": slice_obj.name,
+                "status": slice_obj.status,
+                "template_id": slice_obj.template_id,
+                "created_at": slice_obj.created_at,
+                "vms": vms,
+                "vlans": vlans,
+                "vnc_ports": vnc_ports
+            }
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener detalles del slice: {str(e)}"
+        )
+
+
 @router.post("/{slice_id}/destroy", status_code=status.HTTP_200_OK)
 async def destroy_slice(
     slice_id: int,
@@ -155,6 +217,7 @@ async def destroy_slice(
 ):
     """
     Envía petición de destrucción al servidor de despliegue y elimina el slice de la BD.
+    Además, libera automáticamente las VLANs y puertos VNC asociados.
     La operación de destrucción se ejecuta en background en el servidor.
     """
     # Verificar que el slice existe y pertenece al usuario
@@ -174,6 +237,31 @@ async def destroy_slice(
     # Guardar nombre para el mensaje de respuesta
     slice_name = slice_obj.name
     
+    # 🆕 PRIMERO: Liberar VLANs y puertos VNC llamando a la Resources API
+    resources_released = {"vlans": 0, "vnc_ports": 0}
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # Llamar al endpoint DELETE de la Resources API
+            resources_url = f"http://10.20.12.26:8001/api/v1/slices/{slice_id}"
+            resources_response = await client.delete(
+                resources_url,
+                params={
+                    "deleted_by": user.user_id,
+                    "delete_reason": "Usuario eliminó el slice desde la interfaz web"
+                }
+            )
+            
+            if resources_response.status_code == 200:
+                resources_data = resources_response.json()
+                resources_released["vlans"] = resources_data.get("detail", {}).get("vlans_released", 0)
+                resources_released["vnc_ports"] = resources_data.get("detail", {}).get("vnc_ports_released", 0)
+                print(f"✅ Recursos liberados: {resources_released['vlans']} VLANs, {resources_released['vnc_ports']} puertos VNC")
+            else:
+                print(f"⚠️ No se pudieron liberar recursos automáticamente: {resources_response.status_code}")
+    except Exception as e:
+        print(f"⚠️ Error al liberar recursos: {str(e)}")
+        # Continuar con la destrucción aunque falle la liberación de recursos
+    
     # Enviar POST al servidor de destrucción con timeout corto (5s para la respuesta inicial)
     deploy_url = "http://10.20.12.209:8581/destroy"
     
@@ -181,7 +269,8 @@ async def destroy_slice(
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(
                 deploy_url,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
+                params={"slice_id": slice_id}  # Enviar slice_id como query parameter
             )
             
             if response.status_code != 200:
@@ -200,7 +289,8 @@ async def destroy_slice(
             return {
                 "message": f"Slice '{slice_name}' eliminado exitosamente (destrucción en progreso)",
                 "slice_id": slice_id,
-                "deployment_response": result
+                "deployment_response": result,
+                "resources_released": resources_released
             }
             
     except httpx.TimeoutException:
@@ -212,7 +302,8 @@ async def destroy_slice(
         return {
             "message": f"Slice '{slice_name}' eliminado de la base de datos (destrucción en progreso)",
             "slice_id": slice_id,
-            "note": "La operación de destrucción continúa en el servidor aunque no haya respondido a tiempo"
+            "note": "La operación de destrucción continúa en el servidor aunque no haya respondido a tiempo",
+            "resources_released": resources_released
         }
         
     except httpx.RequestError as e:

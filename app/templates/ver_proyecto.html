@@ -1,206 +1,606 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Ver Proyecto - Orquestador Privado</title>
-  <link rel="stylesheet" href="https://unpkg.com/vis-network/styles/vis-network.min.css">
-       <link rel="stylesheet" href="../static/css/ver_proyecto.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topología Desplegada</title>
 
+    <!-- vis-network -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e8eef5 100%);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 18px 30px;
+            border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(100, 116, 139, 0.08);
+            z-index: 10;
+        }
+
+        .header h1 {
+            color: #1e293b;
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slice-subtitle {
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+
+        /* Main container */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Canvas */
+        #topology-canvas {
+            flex: 1;
+            background: white;
+            background-image:
+                linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+        }
+
+        /* Summary Panel */
+        #summary-panel {
+            width: 300px;
+            background: white;
+            border-left: 1px solid #e2e8f0;
+            overflow-y: auto;
+            box-shadow: -2px 0 10px rgba(100, 116, 139, 0.05);
+        }
+
+        .panel-section {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .panel-section h3 {
+            color: #1e293b;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* VM Card compacta */
+        .vm-card-compact {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .vm-card-compact:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .vm-card-compact h4 {
+            font-size: 13px;
+            color: #1e293b;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .vm-specs {
+            font-size: 11px;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        /* Stats compact */
+        .stats-compact {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-mini {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-mini-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .stat-mini-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;  /* Cambiar de absolute a fixed */
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 6px 0;
+            min-width: 200px;
+            z-index: 99999;  /* Aumentar z-index */
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.15s;
+        }
+
+        .context-menu-item:hover {
+            background: #f1f5f9;
+        }
+
+        .context-menu-item:active {
+            background: #e2e8f0;
+        }
+
+        /* Footer */
+        .footer {
+            background: white;
+            padding: 14px 24px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+    </style>
 </head>
 <body>
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h2>
-        <div class="logo-icon">🔐</div>
-        <span>Orquestador</span>
-      </h2>
-      <button class="toggle-btn" id="toggleSidebar">◀</button>
+    <!-- Header -->
+    <header class="header">
+        <h1 id="slice-name">🚀 Cargando topología...</h1>
+        <div class="slice-subtitle" id="slice-subtitle">Estado: ...</div>
+    </header>
+
+    <!-- Main container -->
+    <div class="main-container">
+        <!-- Canvas -->
+        <div id="topology-canvas" style="position: relative;"></div>
+
+        <!-- Summary Panel -->
+        <aside id="summary-panel">
+            <!-- Info general -->
+            <div class="panel-section">
+                <h3>📊 Información</h3>
+                <div class="stats-compact">
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="total-vms">0</div>
+                        <div class="stat-mini-label">VMs</div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="stat-mini-value" id="total-vlans">0</div>
+                        <div class="stat-mini-label">VLANs</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VMs compactas -->
+            <div class="panel-section">
+                <h3>🖥️ Máquinas Virtuales</h3>
+                <div id="vms-list"></div>
+            </div>
+        </aside>
     </div>
 
-    <nav class="sidebar-menu">
-      <a href="/home" class="menu-item" id="inicioLink">
-        <span class="menu-icon">🏠</span>
-        <span>Inicio</span>
-      </a>
-      <a href="/projects" class="menu-item active" id="proyectosLink">
-        <span class="menu-icon">📁</span>
-        <span>Proyectos</span>
-      </a>
-    </nav>
+    <!-- Footer -->
+    <footer class="footer">
+        <a href="/projects" class="btn btn-secondary">← Volver a Proyectos</a>
+    </footer>
 
-    <div class="sidebar-footer">
-      <div class="divider"></div>
-      <a href="#" class="menu-item" id="changePasswordLink">
-        <span class="menu-icon">🔑</span>
-        <span>Cambiar Contraseña</span>
-      </a>
-      <a href="/auth/logout" class="menu-item" id="logoutLink">
-        <span class="menu-icon">🚪</span>
-        <span>Cerrar Sesión</span>
-      </a>
-    </div>
-  </aside>
-
-  <!-- Main Content -->
-  <main class="main-content">
-    <div class="page-header">
-      <div class="project-title">
-        <h1 id="projectTitle">Ver Proyecto</h1>
-        <p>Doble click en un nodo para ver su información, click derecho para ver otras acciones</p>
-      </div>
-      <div class="toolbar">
-        <button class="btn-tool" id="downloadBtn"><span class="icon">💾</span><span class="tooltip">Descargar</span></button>
-        <button class="btn-tool" id="deleteBtn"><span class="icon">🗑️</span><span class="tooltip">Eliminar</span></button>
-        <button class="btn-tool" id="playBtn"><span class="icon">▶️</span><span class="tooltip">Iniciar</span></button>
-        <button class="btn-tool" id="stopBtn"><span class="icon">⏹️</span><span class="tooltip">Detener</span></button>
-        <button class="btn-tool" id="refreshBtn"><span class="icon">🔄</span><span class="tooltip">Actualizar</span></button>
-        <button class="btn-tool" id="viewBtn"><span class="icon">👁️</span><span class="tooltip">Vista</span></button>
-        <button class="btn-tool" id="consoleBtn"><span class="icon">💻</span><span class="tooltip">Consola</span></button>
-        <button class="btn-tool" id="printBtn"><span class="icon">🖨️</span><span class="tooltip">Imprimir</span></button>
-      </div>
+    <!-- Context Menu -->
+    <div class="context-menu" id="context-menu">
+        <div class="context-menu-item" id="menu-terminal">
+            <span>🖥️</span>
+            <span>Abrir Terminal VNC</span>
+        </div>
     </div>
 
-    <div class="topology-container">
-      <div id="mynetwork"></div>
-      <div class="zoom-controls">
-        <button class="zoom-btn" id="zoomInBtn">+</button>
-        <button class="zoom-btn" id="zoomOutBtn">−</button>
-        <button class="zoom-btn" id="fitBtn">⊡</button>
-      </div>
-    </div>
-  </main>
-
-  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-  <script>
-    // Helpers
-    const projectId = window.location.pathname.split('/').pop(); // /projects/123 → "123"
-
-    // Título dinámico (si quieres poner el nombre real, puedes rellenarlo desde tu backend con Jinja)
-    document.getElementById('projectTitle').textContent = `Ver Proyecto: ${projectId}`;
-
-    // Toggle sidebar
-    const toggleBtn = document.getElementById('toggleSidebar');
-    const sidebar = document.querySelector('.sidebar');
-    const mainContent = document.querySelector('.main-content');
-
-    toggleBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
-      mainContent.classList.toggle('expanded');
-      toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
-    });
-
-    // Acciones toolbar → API (usa cookies JWT; por eso credentials: 'include')
-    async function callApi(path, opts = {}) {
-      const res = await fetch(path, { credentials: 'include', ...opts });
-      if (res.status === 401) {
-        window.location.href = '/login';
-        return null;
-      }
-      return res;
-    }
-
-    document.getElementById('downloadBtn').addEventListener('click', async () => {
-      const res = await callApi(`/api/projects/${projectId}/download`);
-      if (!res) return;
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `proyecto_${projectId}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-
-    document.getElementById('deleteBtn').addEventListener('click', async () => {
-      if (!confirm('¿Estás seguro de eliminar esta topología?')) return;
-      const res = await callApi(`/api/projects/${projectId}`, { method: 'DELETE' });
-      if (!res) return;
-      if (res.ok) window.location.href = '/projects';
-      else alert('No se pudo eliminar');
-    });
-
-    document.getElementById('playBtn').addEventListener('click', async () => {
-      const res = await callApi(`/api/projects/${projectId}/start`, { method: 'POST' });
-      if (!res) return;
-      alert(res.ok ? 'Topología iniciada' : 'No se pudo iniciar');
-    });
-
-    document.getElementById('stopBtn').addEventListener('click', async () => {
-      const res = await callApi(`/api/projects/${projectId}/stop`, { method: 'POST' });
-      if (!res) return;
-      alert(res.ok ? 'Topología detenida' : 'No se pudo detener');
-    });
-
-    document.getElementById('refreshBtn').addEventListener('click', async () => {
-      // ejemplo: pedir estado y refrescar (aquí sólo recargamos la página)
-      window.location.reload();
-    });
-
-    document.getElementById('viewBtn').addEventListener('click', () => {
-      // Cambiar de vista (placeholder)
-      alert('Cambiar vista (implementa según tu UI)');
-    });
-
-    document.getElementById('consoleBtn').addEventListener('click', () => {
-      // Abre consola del proyecto/nodo (ajusta a tu endpoint real)
-      window.open(`/projects/${projectId}/console`, '_blank');
-    });
-
-    document.getElementById('printBtn').addEventListener('click', () => window.print());
-
-    // ---------------- vis-network (la topología de demo se queda igual) ----------------
-    const nodes = new vis.DataSet([
-      { id: 1, label: 'server1', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
-      { id: 2, label: 'server2', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
-      { id: 3, label: 'server3', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
-      { id: 4, label: 'server4', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
-      { id: 5, label: 'gateway', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48Y2lyY2xlIGN4PSIyNSIgY3k9IjI1IiByPSIyNSIgZmlsbD0iIzYwYTVmYSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+RzwvdGV4dD48L3N2Zz4=' },
-      { id: 6, label: 'ofs', shape: 'box', color: { background: '#7dd3fc', border: '#60a5fa' } }
-    ]);
-
-    const edges = new vis.DataSet([
-      { from: 5, to: 1, label: 'Enlace 6' },
-      { from: 5, to: 6, label: 'Enlace 7' },
-      { from: 6, to: 2, label: 'Enlace 8' },
-      { from: 6, to: 3, label: 'Enlace 9' },
-      { from: 6, to: 4, label: 'Enlace 10' }
-    ]);
-
-    const container = document.getElementById('mynetwork');
-    const data = { nodes, edges };
-    const options = {
-      interaction:{ hover:true, navigationButtons:false, keyboard:true },
-      physics:{ enabled:true, stabilization:{ iterations:100 } },
-      nodes:{ font:{ size:14, color:'#1e293b' } },
-      edges:{
-        font:{ size:12, color:'#64748b', align:'middle' },
-        color:{ color:'#cbd5e1', highlight:'#60a5fa', hover:'#60a5fa' },
-        smooth:{ type:'continuous' }
-      }
-    };
-    const network = new vis.Network(container, data, options);
-
-    // Zoom controls
-    document.getElementById('zoomInBtn').addEventListener('click', () => {
-      const scale = network.getScale(); network.moveTo({ scale: scale * 1.2 });
-    });
-    document.getElementById('zoomOutBtn').addEventListener('click', () => {
-      const scale = network.getScale(); network.moveTo({ scale: scale * 0.8 });
-    });
-    document.getElementById('fitBtn').addEventListener('click', () => network.fit());
-
-    // Doble click → info nodo
-    network.on('doubleClick', (params) => {
-      if (params.nodes.length > 0) {
-        const nodeId = params.nodes[0];
-        const node = nodes.get(nodeId);
-        alert(`Información del nodo: ${node.label}\nID: ${nodeId}`);
-      }
-    });
-  </script>
+    <script>
+        const PC_IMAGE = '/static/images/pc.png';
+        const sliceId = {{ slice_id }};
+        let sliceData = null;
+        let templateData = null;
+        let network = null;
+        let selectedVmId = null;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Página cargada, iniciando...');
+            
+            // Verificar que el menú contextual existe
+            const menu = document.getElementById('context-menu');
+            console.log('📋 Menú contextual encontrado:', menu);
+            
+            loadSliceData();
+        });
+        
+        async function loadSliceData() {
+            try {
+                // 1. Cargar datos del slice desplegado (VMs reales, VLANs, VNC ports)
+                const sliceResponse = await fetch(`/slices/${sliceId}/details`, {
+                    credentials: 'include'
+                });
+                
+                if (!sliceResponse.ok) throw new Error('Error al cargar slice');
+                
+                sliceData = await sliceResponse.json();
+                console.log('Slice data:', sliceData);
+                
+                // 2. Cargar template para obtener la topología (nodos y conexiones)
+                if (!sliceData.template_id) {
+                    throw new Error('Este slice no tiene template asociado');
+                }
+                
+                const templateResponse = await fetch(`/templates/${sliceData.template_id}`, {
+                    credentials: 'include'
+                });
+                
+                if (!templateResponse.ok) throw new Error('Error al cargar template');
+                
+                templateData = await templateResponse.json();
+                console.log('Template data:', templateData);
+                
+                if (!templateData.json_template || !templateData.json_template.topologia) {
+                    throw new Error('El template no tiene topología guardada');
+                }
+                
+                // Actualizar header
+                document.getElementById('slice-name').textContent = `🚀 ${sliceData.name}`;
+                document.getElementById('slice-subtitle').textContent = `Estado: ${sliceData.status} · Creado: ${formatDate(sliceData.created_at)}`;
+                
+                // Actualizar stats
+                const totalNodes = templateData.json_template.topologia.nodes.length;
+                const totalEdges = templateData.json_template.topologia.edges.length;
+                document.getElementById('total-vms').textContent = totalNodes;
+                document.getElementById('total-vlans').textContent = sliceData.vlans.length;
+                
+                console.log(`Renderizando ${totalNodes} nodos y ${totalEdges} conexiones`);
+                
+                // Renderizar usando topología del template + datos del slice
+                initNetwork();
+                renderVMsList();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error al cargar la topología: ' + error.message);
+            }
+        }
+        
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('es-ES', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+        
+        function buildNodeTitle(vmNode, recursos, publicAccess) {
+            // vmNode es del template (vm-1, vm-2, etc)
+            // recursos es del template.json_template.recursos
+            const cfg = recursos[vmNode.id] || {};
+            const hasInternet = publicAccess.includes(vmNode.id);
+            
+            // Buscar VM real desplegada por nombre
+            const deployedVm = sliceData.vms.find(v => v.name === (cfg.name || vmNode.label || vmNode.id));
+            const vncPort = deployedVm ? sliceData.vnc_ports.find(p => p.vm_id === deployedVm.vm_id) : null;
+            
+            let title = `${cfg.name || vmNode.label || vmNode.id}\n`;
+            title += `Flavour: ${cfg.flavour || 'N/A'}\n`;
+            title += `CPU: ${cfg.vcpu || cfg.cpu || 0}v | RAM: ${cfg.ram_gb || cfg.ram || 0}GB\n`;
+            title += `Disco: ${cfg.disk_gb || cfg.disk || 0}GB\n`;
+            title += `Imagen: ${cfg.os || cfg.image || 'N/A'}\n`;
+            title += `Internet: ${hasInternet ? 'Sí' : 'No'}`;
+            
+            if (deployedVm) {
+                title += `\n\n--- Despliegue ---\n`;
+                title += `Estado: ${deployedVm.status}\n`;
+                if (deployedVm.worker_ip) {
+                    title += `Worker: ${deployedVm.worker_ip}\n`;
+                }
+                if (vncPort) {
+                    title += `Puerto VNC: ${vncPort.port_number}`;
+                }
+            }
+            
+            return title;
+        }
+        
+        function initNetwork() {
+            const container = document.getElementById('topology-canvas');
+            const topoJSON = templateData.json_template;
+            
+            console.log('Topología del template:', topoJSON.topologia);
+            console.log('Nodos:', topoJSON.topologia.nodes);
+            console.log('Conexiones:', topoJSON.topologia.edges);
+            
+            // Obtener lista de VMs con acceso a internet
+            const publicAccess = (topoJSON.subred && topoJSON.subred.public_access) || [];
+            
+            // Crear mapa de vm_id del template a vm_id real desplegado
+            const vmIdMap = {};
+            topoJSON.topologia.nodes.forEach(node => {
+                const cfg = topoJSON.recursos[node.id] || {};
+                const deployedVm = sliceData.vms.find(v => v.name === (cfg.name || node.label || node.id));
+                if (deployedVm) {
+                    vmIdMap[node.id] = deployedVm.vm_id;
+                }
+            });
+            
+            // Crear nodos usando EXACTAMENTE la estructura del template
+            const nodes = new vis.DataSet(
+                topoJSON.topologia.nodes.map(node => {
+                    const cfg = topoJSON.recursos[node.id] || {};
+                    
+                    return {
+                        id: node.id,  // vm-1, vm-2, etc
+                        label: `${cfg.name || node.label || node.id}\n${cfg.os || cfg.image || 'N/A'}`,
+                        title: buildNodeTitle(node, topoJSON.recursos, publicAccess),
+                        shape: "image",
+                        image: node.image || PC_IMAGE,
+                        x: node.x,
+                        y: node.y,
+                        fixed: false,
+                        physics: false,
+                        deployedVmId: vmIdMap[node.id]
+                    };
+                })
+            );
+            
+            // Crear conexiones usando EXACTAMENTE los edges del template
+            const edges = new vis.DataSet(
+                topoJSON.topologia.edges.map(edge => ({
+                    id: edge.id || `edge-${edge.from}-${edge.to}`,
+                    from: edge.from,
+                    to: edge.to,
+                    color: { color: "#94a3b8", highlight: "#60a5fa" },
+                    width: 2,
+                    smooth: { type: "continuous" }
+                }))
+            );
+            
+            console.log(`Creando red con ${nodes.length} nodos y ${edges.length} aristas`);
+            
+            const data = { nodes, edges };
+            
+            const options = {
+                nodes: {
+                    shape: "image",
+                    image: PC_IMAGE,
+                    size: 40,
+                    font: {
+                        size: 13,
+                        color: "#1e293b",
+                        face: "Segoe UI",
+                        background: "rgba(255, 255, 255, 0.9)",
+                        strokeWidth: 0,
+                        multi: true
+                    },
+                    borderWidth: 2,
+                    borderWidthSelected: 3
+                },
+                edges: {
+                    color: { color: "#94a3b8", highlight: "#60a5fa" },
+                    width: 2,
+                    smooth: { type: "continuous" }
+                },
+                physics: { enabled: false },
+                interaction: {
+                    dragNodes: true,
+                    dragView: true,
+                    zoomView: true,
+                    selectable: true,
+                    hover: true,
+                    tooltipDelay: 150
+                }
+            };
+            
+            network = new vis.Network(container, data, options);
+            
+            console.log('🌐 Red vis.js inicializada');
+            
+            // Click derecho en VM - usar rightClick en lugar de oncontext
+            network.on('oncontext', function(params) {
+                params.event.preventDefault();
+                console.log('🖱️ Click derecho detectado', params);
+                
+                const nodeId = network.getNodeAt(params.pointer.DOM);
+                console.log('📍 Node ID:', nodeId);
+                
+                if (nodeId) {
+                    const node = nodes.get(nodeId);
+                    console.log('📦 Node data:', node);
+                    
+                    if (node && node.deployedVmId) {
+                        selectedVmId = node.deployedVmId;
+                        console.log('✅ VM seleccionada ID:', selectedVmId);
+                        
+                        // Usar las coordenadas del evento del DOM
+                        const x = params.event.pageX || params.event.clientX;
+                        const y = params.event.pageY || params.event.clientY;
+                        console.log('📍 Mostrando menú en:', x, y);
+                        
+                        showContextMenu(x, y);
+                    } else {
+                        console.log('❌ Nodo sin deployedVmId:', node);
+                    }
+                } else {
+                    console.log('❌ No hay nodo en esta posición');
+                }
+            });
+            
+            console.log('✅ Event listener de click derecho registrado');
+            
+            // TAMBIÉN agregar evento al canvas directamente como respaldo
+            const canvas = document.getElementById('topology-canvas');
+            canvas.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                console.log('🎯 Click derecho directo en canvas!', e);
+                
+                // Mostrar menú de prueba
+                showContextMenu(e.pageX, e.pageY);
+                
+                return false;
+            });
+            console.log('✅ Event listener directo en canvas registrado');
+            
+            // Cerrar menú al hacer click fuera
+            document.addEventListener('click', hideContextMenu);
+        }
+        
+        function renderVMsList() {
+            const container = document.getElementById('vms-list');
+            container.innerHTML = '';
+            
+            if (!templateData || !templateData.json_template) return;
+            
+            const topoJSON = templateData.json_template;
+            const publicAccess = (topoJSON.subred && topoJSON.subred.public_access) || [];
+            
+            // Renderizar TODAS las VMs del template
+            topoJSON.topologia.nodes.forEach(node => {
+                const cfg = topoJSON.recursos[node.id] || {};
+                const deployedVm = sliceData.vms.find(v => v.name === (cfg.name || node.label || node.id));
+                const vncPort = deployedVm ? sliceData.vnc_ports.find(p => p.vm_id === deployedVm.vm_id) : null;
+                const hasInternet = publicAccess.includes(node.id);
+                
+                const card = document.createElement('div');
+                card.className = 'vm-card-compact';
+                card.onclick = () => {
+                    if (network) {
+                        network.selectNodes([node.id]);
+                        network.focus(node.id, { scale: 1.2, animation: true });
+                    }
+                };
+                
+                const statusText = deployedVm ? `<strong>${deployedVm.status}</strong>` : '<em style="color: #94a3b8;">No desplegada</em>';
+                const vncText = vncPort ? `<br>VNC: ${vncPort.port_number}` : '';
+                
+                card.innerHTML = `
+                    <h4>${cfg.name || node.label || node.id}</h4>
+                    <div class="vm-specs">
+                        <strong>${cfg.flavour || 'N/A'}</strong><br>
+                        ${cfg.vcpu || cfg.cpu || 0}v · ${cfg.ram_gb || cfg.ram || 0}GB · ${cfg.disk_gb || cfg.disk || 0}GB<br>
+                        ${cfg.os || cfg.image || 'N/A'}<br>
+                        Internet: ${hasInternet ? '✓' : '✗'}<br>
+                        Estado: ${statusText}${vncText}
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+            
+            console.log(`Renderizadas ${topoJSON.topologia.nodes.length} VMs en el panel`);
+        }
+        
+        function showContextMenu(x, y) {
+            const menu = document.getElementById('context-menu');
+            console.log('📋 Mostrando menú en posición:', x, y);
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.style.display = 'block';
+            console.log('✅ Menú mostrado, display:', menu.style.display);
+        }
+        
+        function hideContextMenu() {
+            document.getElementById('context-menu').style.display = 'none';
+        }
+        
+        function getSSHPortFromWorkerIP(workerIP) {
+            if (!workerIP) return null;
+            
+            // Extraer último octeto del worker_ip (10.20.201.1 -> 1)
+            const parts = workerIP.split('.');
+            const lastOctet = parts[parts.length - 1];
+            
+            // 201.1 -> 5811, 201.2 -> 5812, 201.3 -> 5813
+            if (lastOctet === '1') return 5811;
+            if (lastOctet === '2') return 5812;
+            if (lastOctet === '3') return 5813;
+            
+            return null;
+        }
+        
+        // Abrir terminal VNC
+        document.getElementById('menu-terminal').addEventListener('click', function() {
+            console.log('🖱️ Click en menu-terminal, selectedVmId:', selectedVmId);
+            if (!selectedVmId) {
+                console.log('❌ No hay VM seleccionada');
+                hideContextMenu();
+                return;
+            }
+            
+            hideContextMenu();
+            
+            const vncUrl = `/vnc/${selectedVmId}`;
+            console.log('🚀 Abriendo VNC viewer:', vncUrl);
+            
+            // Abrir VNC viewer en nueva pestaña
+            window.open(vncUrl, '_blank');
+        });
+        
+        console.log('✅ Event listener de menu-terminal registrado');
+    </script>
 </body>
 </html>

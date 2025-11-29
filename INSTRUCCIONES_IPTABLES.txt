@@ -1,0 +1,109 @@
+═══════════════════════════════════════════════════════════════════════
+CONFIGURAR IPTABLES EN EL GATEWAY PARA VNC
+═══════════════════════════════════════════════════════════════════════
+
+⚠️ EJECUTAR EN EL GATEWAY: 10.20.12.209 (puerto SSH 22)
+
+═══════════════════════════════════════════════════════════════════════
+PASO 1: COPIAR EL SCRIPT AL GATEWAY
+═══════════════════════════════════════════════════════════════════════
+
+Desde el servidor de aplicaciones (10.20.12.26):
+
+scp /home/ubuntu/proyecto_cloud/setup_iptables_vnc.sh ubuntu@10.20.12.209:/tmp/
+
+
+═══════════════════════════════════════════════════════════════════════
+PASO 2: CONECTARSE AL GATEWAY Y EJECUTAR
+═══════════════════════════════════════════════════════════════════════
+
+ssh ubuntu@10.20.12.209
+chmod +x /tmp/setup_iptables_vnc.sh
+sudo /tmp/setup_iptables_vnc.sh
+
+
+═══════════════════════════════════════════════════════════════════════
+PASO 3: GUARDAR REGLAS PERMANENTEMENTE
+═══════════════════════════════════════════════════════════════════════
+
+sudo apt install -y iptables-persistent
+sudo netfilter-persistent save
+
+
+═══════════════════════════════════════════════════════════════════════
+MAPEO DE PUERTOS (AUTOMÁTICO)
+═══════════════════════════════════════════════════════════════════════
+
+Server 1 (10.20.201.1):
+  Gateway:7000 → Server1:6000 (VNC 5900)
+  Gateway:7001 → Server1:6001 (VNC 5901)
+  ...
+  Gateway:7050 → Server1:6050 (VNC 5950)
+
+Server 2 (10.20.201.2):
+  Gateway:8000 → Server2:6000 (VNC 5900)
+  Gateway:8001 → Server2:6001 (VNC 5901)
+  ...
+  Gateway:8050 → Server2:6050 (VNC 5950)
+
+Server 3 (10.20.201.3):
+  Gateway:9000 → Server3:6000 (VNC 5900)
+  Gateway:9001 → Server3:6001 (VNC 5901)
+  ...
+  Gateway:9050 → Server3:6050 (VNC 5950)
+
+
+═══════════════════════════════════════════════════════════════════════
+VERIFICACIÓN
+═══════════════════════════════════════════════════════════════════════
+
+# Ver reglas DNAT (redirección de entrada)
+sudo iptables -t nat -L PREROUTING -n -v | grep DNAT | head -10
+
+# Ver reglas MASQUERADE (redirección de salida)
+sudo iptables -t nat -L POSTROUTING -n -v | grep MASQUERADE | head -10
+
+# Probar conexión a un puerto (ejemplo: Server1, VNC 5950 → Gateway:7050)
+nc -zv localhost 7050
+
+
+═══════════════════════════════════════════════════════════════════════
+LIMPIAR REGLAS (SI ES NECESARIO)
+═══════════════════════════════════════════════════════════════════════
+
+sudo iptables -t nat -F PREROUTING
+sudo iptables -t nat -F POSTROUTING
+sudo netfilter-persistent save
+
+
+═══════════════════════════════════════════════════════════════════════
+CÓMO FUNCIONA
+═══════════════════════════════════════════════════════════════════════
+
+1. Usuario abre VNC de una VM en Server 1 con VNC puerto 5950
+2. Frontend calcula: Server1 + VNC 5950 = Gateway puerto 7050
+3. Navegador conecta: ws://10.20.12.209:7050
+4. Gateway (iptables DNAT) redirige: 10.20.12.209:7050 → 10.20.201.1:6050
+5. Websockify en Server1:6050 redirige: → localhost:5950 (VNC de la VM)
+6. ¡Conexión VNC establecida sin túneles SSH manuales!
+
+
+═══════════════════════════════════════════════════════════════════════
+VENTAJAS DE ESTA SOLUCIÓN
+═══════════════════════════════════════════════════════════════════════
+
+✅ No requiere túneles SSH manuales
+✅ Conexión directa desde el navegador
+✅ Escalable: 1 regla por VM automáticamente
+✅ Persistente: Las reglas sobreviven reinicios
+✅ Simple: Solo iptables en el gateway
+
+
+═══════════════════════════════════════════════════════════════════════
+RESUMEN EJECUTIVO
+═══════════════════════════════════════════════════════════════════════
+
+1. Copiar script al gateway
+2. Ejecutar script (crea ~150 reglas iptables)
+3. Guardar reglas para que persistan
+4. ¡Listo! El VNC funcionará automáticamente desde la web

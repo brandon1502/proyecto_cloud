@@ -528,6 +528,9 @@
   const tplMeta = templatesById.get(String(tplId)); // resumen de la card
   if (!tplId || !tplMeta) return;
 
+  // Evitar múltiples clicks
+  if (deployBtn.disabled) return;
+
   // nombre del slice: <nombre-plantilla>-YYYYMMDDHHMMSS
   const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
   const sliceName = `${tplMeta.name}-${stamp}`.slice(0, 150); // limite
@@ -537,13 +540,12 @@
   deployBtn.textContent = 'Desplegando…';
 
   try {
-    // 1. Pedir al backend que obtenga el json_template y lo envíe al servidor de despliegue
-    //    El backend ya NO necesita que le envíes topology, él lo busca en la BD
+    // Pedir al backend que obtenga el json_template y lo envíe al servidor de despliegue
+    // El servidor de despliegue se encargará de crear el slice en la BD
     const externalDeployPayload = {
       name: sliceName,
       zone_hint: zone,
       template_id: Number(tplId),
-      // ❌ YA NO enviar topology aquí, el backend lo obtiene de la BD
     };
 
     const triggerRes = await fetch('/deployments/trigger', {
@@ -560,67 +562,17 @@
 
     // Leer respuesta del servidor de despliegue
     const triggerInfo = await triggerRes.json();
-    console.log('Respuesta del servidor de despliegue:', triggerInfo);
+    console.log('✅ Deployment iniciado:', triggerInfo);
 
-    // 2. Registrar el slice en tu propia BD, para mostrarlo en tabla
-    const recordPayload = {
-      template_id: Number(tplId),
-      az_hint: zone,
-      name: sliceName,
-      worker_job_id: triggerInfo.worker_job_id || null,
-    };
-
-    const recordRes = await fetch('/slices', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(recordPayload),
-    });
-
-    if (!recordRes.ok) {
-      const errorData = await recordRes.json().catch(() => ({ detail: 'Error desconocido' }));
-      throw new Error(errorData.detail || `Error guardando slice (HTTP ${recordRes.status})`);
-    }
-
-    const slice = await recordRes.json();
-
-    // 3. Actualizar tabla en el frontend
-    const createdAt = slice.created_at
-      ? new Date(slice.created_at).toLocaleString()
-      : new Date().toLocaleString();
-
-    const desc = tplMeta.description
-      ? `${tplMeta.description} · ${zone.toUpperCase()}`
-      : `Zona: ${zone.toUpperCase()}`;
-
-    addProjectRow({
-      id: slice.slice_id,
-      name: slice.name,
-      description: desc,
-      createdAt,
-      status: (slice.status || 'PENDING').toUpperCase(),
-    });
-
-    // Mostrar SweetAlert2 personalizado y luego cerrar el modal
-    Swal.fire({
-      title: 'Despliegue enviado',
-      html: `<p style="margin:0; color:#475569; font-size:14px;">El despliegue fue enviado y registrado.</p>`,
-      icon: 'success',
-      confirmButtonText: 'Entendido',
-      customClass: {
-        popup: 'swal-custom-popup',
-        title: 'swal-custom-title',
-        confirmButton: 'swal-custom-confirm'
-      },
-      buttonsStyling: false
-    }).then(() => {
-      closeModal();
-    });
+    alert('✅ Deployment enviado exitosamente al servidor de despliegue');
+    
+    // Cerrar modal y recargar la página para ver el nuevo slice
+    modal.style.display = 'none';
+    location.reload();
 
   } catch (err) {
-    console.error('Error completo:', err);
-    alert('❌ Error al desplegar: ' + (err?.message || 'desconocido'));
-  } finally {
+    console.error('❌ Error en deployment:', err);
+    alert('❌ Error al desplegar: ' + (err?.message || 'Error desconocido'));
     deployBtn.disabled = false;
     deployBtn.textContent = oldText;
   }

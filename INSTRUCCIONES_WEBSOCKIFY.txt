@@ -1,0 +1,165 @@
+═══════════════════════════════════════════════════════════════════════
+INSTRUCCIONES PARA INSTALAR WEBSOCKIFY EN LOS SERVERS
+═══════════════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANTE: Ejecutar estos comandos EN CADA SERVER (1, 2, 3) donde corren las VMs
+
+═══════════════════════════════════════════════════════════════════════
+OPCIÓN 1: USAR EL SCRIPT AUTOMÁTICO (RECOMENDADO)
+═══════════════════════════════════════════════════════════════════════
+
+1. Copiar el script a cada server:
+
+   # Desde 10.20.12.26, copiar al Server 1 (via gateway puerto 5811)
+   scp -P 5811 /home/ubuntu/proyecto_cloud/setup_vnc_websockify.sh ubuntu@10.20.12.209:/tmp/
+   
+   # Desde 10.20.12.26, copiar al Server 2 (via gateway puerto 5812)
+   scp -P 5812 /home/ubuntu/proyecto_cloud/setup_vnc_websockify.sh ubuntu@10.20.12.209:/tmp/
+   
+   # Desde 10.20.12.26, copiar al Server 3 (via gateway puerto 5813)
+   scp -P 5813 /home/ubuntu/proyecto_cloud/setup_vnc_websockify.sh ubuntu@10.20.12.209:/tmp/
+
+2. Conectarse a cada server y ejecutar:
+
+   # Server 1
+   ssh -p 5811 ubuntu@10.20.12.209
+   chmod +x /tmp/setup_vnc_websockify.sh
+   /tmp/setup_vnc_websockify.sh
+   exit
+   
+   # Server 2
+   ssh -p 5812 ubuntu@10.20.12.209
+   chmod +x /tmp/setup_vnc_websockify.sh
+   /tmp/setup_vnc_websockify.sh
+   exit
+   
+   # Server 3
+   ssh -p 5813 ubuntu@10.20.12.209
+   chmod +x /tmp/setup_vnc_websockify.sh
+   /tmp/setup_vnc_websockify.sh
+   exit
+
+
+═══════════════════════════════════════════════════════════════════════
+OPCIÓN 2: COMANDOS MANUALES (SI NO FUNCIONA EL SCRIPT)
+═══════════════════════════════════════════════════════════════════════
+
+Ejecutar EN CADA SERVER (conectarse primero con SSH):
+
+# 1. Instalar websockify
+sudo apt update
+sudo apt install -y python3-websockify python3-numpy
+
+# 2. Crear script wrapper
+sudo tee /usr/local/bin/websockify-vnc-proxy > /dev/null <<'EOF'
+#!/bin/bash
+VNC_PORT=$1
+WS_PORT=$((6000 + VNC_PORT - 5900))
+echo "Iniciando websockify: WS puerto $WS_PORT -> VNC localhost:$VNC_PORT"
+exec /usr/bin/websockify --web=/usr/share/novnc $WS_PORT localhost:$VNC_PORT
+EOF
+
+sudo chmod +x /usr/local/bin/websockify-vnc-proxy
+
+# 3. Crear servicio systemd
+sudo tee /etc/systemd/system/vnc-websockify@.service > /dev/null <<'EOF'
+[Unit]
+Description=VNC WebSocket Proxy for VNC port %i
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+ExecStart=/usr/local/bin/websockify-vnc-proxy %i
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 4. Recargar systemd
+sudo systemctl daemon-reload
+
+# 5. Iniciar servicios para todos los puertos VNC
+for port in {5900..5950}; do
+    sudo systemctl enable vnc-websockify@${port}.service 2>/dev/null
+    sudo systemctl restart vnc-websockify@${port}.service
+done
+
+# 6. Verificar que estén corriendo
+sudo systemctl status vnc-websockify@5900
+sudo systemctl status vnc-websockify@5901
+sudo netstat -tuln | grep -E ":(60[0-4][0-9]|605[0])"
+
+
+═══════════════════════════════════════════════════════════════════════
+VERIFICACIÓN
+═══════════════════════════════════════════════════════════════════════
+
+Después de instalar, verificar con:
+
+# Ver estado de un servicio específico
+sudo systemctl status vnc-websockify@5900
+
+# Ver todos los puertos WebSocket escuchando
+sudo netstat -tuln | grep -E ":(60[0-4][0-9]|605[0])"
+
+# Ver logs en tiempo real
+sudo journalctl -u vnc-websockify@5900 -f
+
+
+═══════════════════════════════════════════════════════════════════════
+MAPEO DE PUERTOS
+═══════════════════════════════════════════════════════════════════════
+
+El sistema usa el siguiente mapeo:
+- VNC puerto 5900 → WebSocket puerto 6000
+- VNC puerto 5901 → WebSocket puerto 6001
+- VNC puerto 5902 → WebSocket puerto 6002
+...
+- VNC puerto 5950 → WebSocket puerto 6050
+
+Fórmula: WS_PORT = 6000 + (VNC_PORT - 5900)
+
+
+═══════════════════════════════════════════════════════════════════════
+COMANDOS ÚTILES
+═══════════════════════════════════════════════════════════════════════
+
+# Detener todos los servicios
+for port in {5900..5950}; do sudo systemctl stop vnc-websockify@${port}; done
+
+# Reiniciar todos los servicios
+for port in {5900..5950}; do sudo systemctl restart vnc-websockify@${port}; done
+
+# Ver servicios activos
+sudo systemctl list-units | grep vnc-websockify
+
+# Ver logs de un servicio específico
+sudo journalctl -u vnc-websockify@5900 --since "10 min ago"
+
+
+═══════════════════════════════════════════════════════════════════════
+FIREWALL (SI ES NECESARIO)
+═══════════════════════════════════════════════════════════════════════
+
+Si tienen firewall activo, abrir el rango de puertos 6000-6050:
+
+sudo ufw allow 6000:6050/tcp
+sudo ufw status
+
+
+═══════════════════════════════════════════════════════════════════════
+RESUMEN
+═══════════════════════════════════════════════════════════════════════
+
+1. Copiar y ejecutar el script en cada server (1, 2, 3)
+2. Verificar que los servicios estén corriendo
+3. Asegurarse que los puertos 6000-6050 estén abiertos
+4. Probar desde el navegador haciendo click en "Abrir Terminal VNC"
+
+Cualquier duda, revisar los logs con:
+sudo journalctl -u vnc-websockify@5900 -f

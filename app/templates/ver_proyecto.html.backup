@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ver Proyecto - Orquestador Privado</title>
+  <link rel="stylesheet" href="https://unpkg.com/vis-network/styles/vis-network.min.css">
+       <link rel="stylesheet" href="../static/css/ver_proyecto.css">
+
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>
+        <div class="logo-icon">🔐</div>
+        <span>Orquestador</span>
+      </h2>
+      <button class="toggle-btn" id="toggleSidebar">◀</button>
+    </div>
+
+    <nav class="sidebar-menu">
+      <a href="/home" class="menu-item" id="inicioLink">
+        <span class="menu-icon">🏠</span>
+        <span>Inicio</span>
+      </a>
+      <a href="/projects" class="menu-item active" id="proyectosLink">
+        <span class="menu-icon">📁</span>
+        <span>Proyectos</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="divider"></div>
+      <a href="#" class="menu-item" id="changePasswordLink">
+        <span class="menu-icon">🔑</span>
+        <span>Cambiar Contraseña</span>
+      </a>
+      <a href="/auth/logout" class="menu-item" id="logoutLink">
+        <span class="menu-icon">🚪</span>
+        <span>Cerrar Sesión</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="page-header">
+      <div class="project-title">
+        <h1 id="projectTitle">Ver Proyecto</h1>
+        <p>Doble click en un nodo para ver su información, click derecho para ver otras acciones</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn-tool" id="downloadBtn"><span class="icon">💾</span><span class="tooltip">Descargar</span></button>
+        <button class="btn-tool" id="deleteBtn"><span class="icon">🗑️</span><span class="tooltip">Eliminar</span></button>
+        <button class="btn-tool" id="playBtn"><span class="icon">▶️</span><span class="tooltip">Iniciar</span></button>
+        <button class="btn-tool" id="stopBtn"><span class="icon">⏹️</span><span class="tooltip">Detener</span></button>
+        <button class="btn-tool" id="refreshBtn"><span class="icon">🔄</span><span class="tooltip">Actualizar</span></button>
+        <button class="btn-tool" id="viewBtn"><span class="icon">👁️</span><span class="tooltip">Vista</span></button>
+        <button class="btn-tool" id="consoleBtn"><span class="icon">💻</span><span class="tooltip">Consola</span></button>
+        <button class="btn-tool" id="printBtn"><span class="icon">🖨️</span><span class="tooltip">Imprimir</span></button>
+      </div>
+    </div>
+
+    <div class="topology-container">
+      <div id="mynetwork"></div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomInBtn">+</button>
+        <button class="zoom-btn" id="zoomOutBtn">−</button>
+        <button class="zoom-btn" id="fitBtn">⊡</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script>
+    // Helpers
+    const projectId = window.location.pathname.split('/').pop(); // /projects/123 → "123"
+
+    // Título dinámico (si quieres poner el nombre real, puedes rellenarlo desde tu backend con Jinja)
+    document.getElementById('projectTitle').textContent = `Ver Proyecto: ${projectId}`;
+
+    // Toggle sidebar
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      mainContent.classList.toggle('expanded');
+      toggleBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+    });
+
+    // Acciones toolbar → API (usa cookies JWT; por eso credentials: 'include')
+    async function callApi(path, opts = {}) {
+      const res = await fetch(path, { credentials: 'include', ...opts });
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return null;
+      }
+      return res;
+    }
+
+    document.getElementById('downloadBtn').addEventListener('click', async () => {
+      const res = await callApi(`/api/projects/${projectId}/download`);
+      if (!res) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `proyecto_${projectId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      if (!confirm('¿Estás seguro de eliminar esta topología?')) return;
+      const res = await callApi(`/api/projects/${projectId}`, { method: 'DELETE' });
+      if (!res) return;
+      if (res.ok) window.location.href = '/projects';
+      else alert('No se pudo eliminar');
+    });
+
+    document.getElementById('playBtn').addEventListener('click', async () => {
+      const res = await callApi(`/api/projects/${projectId}/start`, { method: 'POST' });
+      if (!res) return;
+      alert(res.ok ? 'Topología iniciada' : 'No se pudo iniciar');
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', async () => {
+      const res = await callApi(`/api/projects/${projectId}/stop`, { method: 'POST' });
+      if (!res) return;
+      alert(res.ok ? 'Topología detenida' : 'No se pudo detener');
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      // ejemplo: pedir estado y refrescar (aquí sólo recargamos la página)
+      window.location.reload();
+    });
+
+    document.getElementById('viewBtn').addEventListener('click', () => {
+      // Cambiar de vista (placeholder)
+      alert('Cambiar vista (implementa según tu UI)');
+    });
+
+    document.getElementById('consoleBtn').addEventListener('click', () => {
+      // Abre consola del proyecto/nodo (ajusta a tu endpoint real)
+      window.open(`/projects/${projectId}/console`, '_blank');
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+    // ---------------- vis-network (la topología de demo se queda igual) ----------------
+    const nodes = new vis.DataSet([
+      { id: 1, label: 'server1', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 2, label: 'server2', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 3, label: 'server3', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 4, label: 'server4', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiM0YTVhNjgiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlM8L3RleHQ+PC9zdmc+' },
+      { id: 5, label: 'gateway', shape: 'image', image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIj48Y2lyY2xlIGN4PSIyNSIgY3k9IjI1IiByPSIyNSIgZmlsbD0iIzYwYTVmYSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+RzwvdGV4dD48L3N2Zz4=' },
+      { id: 6, label: 'ofs', shape: 'box', color: { background: '#7dd3fc', border: '#60a5fa' } }
+    ]);
+
+    const edges = new vis.DataSet([
+      { from: 5, to: 1, label: 'Enlace 6' },
+      { from: 5, to: 6, label: 'Enlace 7' },
+      { from: 6, to: 2, label: 'Enlace 8' },
+      { from: 6, to: 3, label: 'Enlace 9' },
+      { from: 6, to: 4, label: 'Enlace 10' }
+    ]);
+
+    const container = document.getElementById('mynetwork');
+    const data = { nodes, edges };
+    const options = {
+      interaction:{ hover:true, navigationButtons:false, keyboard:true },
+      physics:{ enabled:true, stabilization:{ iterations:100 } },
+      nodes:{ font:{ size:14, color:'#1e293b' } },
+      edges:{
+        font:{ size:12, color:'#64748b', align:'middle' },
+        color:{ color:'#cbd5e1', highlight:'#60a5fa', hover:'#60a5fa' },
+        smooth:{ type:'continuous' }
+      }
+    };
+    const network = new vis.Network(container, data, options);
+
+    // Zoom controls
+    document.getElementById('zoomInBtn').addEventListener('click', () => {
+      const scale = network.getScale(); network.moveTo({ scale: scale * 1.2 });
+    });
+    document.getElementById('zoomOutBtn').addEventListener('click', () => {
+      const scale = network.getScale(); network.moveTo({ scale: scale * 0.8 });
+    });
+    document.getElementById('fitBtn').addEventListener('click', () => network.fit());
+
+    // Doble click → info nodo
+    network.on('doubleClick', (params) => {
+      if (params.nodes.length > 0) {
+        const nodeId = params.nodes[0];
+        const node = nodes.get(nodeId);
+        alert(`Información del nodo: ${node.label}\nID: ${nodeId}`);
+      }
+    });
+  </script>
+</body>
+</html>
