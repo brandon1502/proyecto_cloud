@@ -1,0 +1,242 @@
+{
+    "server1": {
+        "id": "server1",
+        "name": "compute-node-server1",
+        "platform": "linux",
+        "zone": "AZ1",
+        "cpu_capacity": {
+            "value": 4,
+            "unit": "cores"
+        },
+        "ram_capacity": {
+            "value": 3.8,
+            "unit": "GiB"
+        },
+        "disk_capacity": {
+            "value": 9.6,
+            "unit": "GB"
+        },
+        "current_usage": {
+            "cpu": {
+                "mean": 1.6806620960752416,
+                "std": 4.2008195439637195,
+                "unit": "%"
+            },
+            "ram": {
+                "mean": 1.7576925581780032,
+                "std": 0.23652425771614174,
+                "unit": "GiB"
+            },
+            "disk": {
+                "used": 7.15108352,
+                "unit": "GB"
+            }
+        },
+        "enabled": true,
+        "in_maintenance": false,
+        "metadata": {
+            "rack": "RACK-AZ1",
+            "datacenter": "Lima"
+        }
+    },
+    "server2": {
+        "id": "server2",
+        "name": "compute-node-server2",
+        "platform": "linux",
+        "zone": "AZ2",
+        "cpu_capacity": {
+            "value": 4,
+            "unit": "cores"
+        },
+        "ram_capacity": {
+            "value": 3.8,
+            "unit": "GiB"
+        },
+        "disk_capacity": {
+            "value": 9.6,
+            "unit": "GB"
+        },
+        "current_usage": {
+            "cpu": {
+                "mean": 1.327962953591004,
+                "std": 3.664672353433575,
+                "unit": "%"
+            },
+            "ram": {
+                "mean": 1.7377441198870178,
+                "std": 0.15128189857645272,
+                "unit": "GiB"
+            },
+            "disk": {
+                "used": 6.322085888,
+                "unit": "GB"
+            }
+        },
+        "enabled": true,
+        "in_maintenance": false,
+        "metadata": {
+            "rack": "RACK-AZ2",
+            "datacenter": "Lima"
+        }
+    },
+    "server3": {
+        "id": "server3",
+        "name": "compute-node-server3",
+        "platform": "linux",
+        "zone": "AZ3",
+        "cpu_capacity": {
+            "value": 4,
+            "unit": "cores"
+        },
+        "ram_capacity": {
+            "value": 3.8,
+            "unit": "GiB"
+        },
+        "disk_capacity": {
+            "value": 9.6,
+            "unit": "GB"
+        },
+        "current_usage": {
+            "cpu": {
+                "mean": 1.7750098535745051,
+                "std": 6.245321921963776,
+                "unit": "%"
+            },
+            "ram": {
+                "mean": 1.7300972457577928,
+                "std": 0.15508787517158362,
+                "unit": "GiB"
+            },
+            "disk": {
+                "used": 7.069827072000001,
+                "unit": "GB"
+            }
+        },
+        "enabled": true,
+        "in_maintenance": false,
+        "metadata": {
+            "rack": "RACK-AZ3",
+            "datacenter": "Lima"
+        }
+    },
+    "worker1": {
+        "id": "worker1",
+        "name": "compute-node-worker1",
+        "platform": "openstack",
+        "zone": "AZ4",
+        "cpu_capacity": {
+            "value": 4,
+            "unit": "cores"
+        },
+        "ram_capacity": {
+            "value": 7.8,
+            "unit": "GiB"
+        },
+        "disk_capacity": {
+            "value": 25.0,
+            "unit": "GB"
+        },
+        "current_usage": {
+            "cpu": {
+                "mean": 6.559777098818081,
+                "std": 7.485592018724636,
+                "unit": "%"
+            },
+            "ram": {
+                "mean": 1.354962606616007,
+                "std": 0.7237874167056304,
+                "unit": "GiB"
+            },
+            "disk": {
+                "used": 9.23465728,
+                "unit": "GB"
+            }
+        },
+        "enabled": true,
+        "in_maintenance": false,
+        "metadata": {
+            "rack": "RACK-AZ4",
+            "datacenter": "Lima"
+        }
+    },
+    "worker2": {
+        "id": "worker2",
+        "name": "compute-node-worker2",
+        "platform": "openstack",
+        "zone": "AZ5",
+        "cpu_capacity": {
+            "value": 4,
+            "unit": "cores"
+        },
+        "ram_capacity": {
+            "value": 7.8,
+            "unit": "GiB"
+        },
+        "disk_capacity": {
+            "value": 25.0,
+            "unit": "GB"
+        },
+        "current_usage": {
+            "cpu": {
+                "mean": 0.6213317706713438,
+                "std": 0.6191191956882052,
+                "unit": "%"
+            },
+            "ram": {
+                "mean": 0.8416811272439944,
+                "std": 0.04480015620104462,
+                "unit": "GiB"
+            },
+            "disk": {
+                "used": 5.764366336,
+                "unit": "GB"
+            }
+        },
+        "enabled": true,
+        "in_maintenance": false,
+        "metadata": {
+            "rack": "RACK-AZ5",
+            "datacenter": "Lima"
+        }
+    },
+    "worker3": {
+        "id": "worker3",
+        "name": "compute-node-worker3",
+        "platform": "openstack",
+        "zone": "AZ5",
+        "cpu_capacity": {
+            "value": 4,
+            "unit": "cores"
+        },
+        "ram_capacity": {
+            "value": 7.8,
+            "unit": "GiB"
+        },
+        "disk_capacity": {
+            "value": 25.0,
+            "unit": "GB"
+        },
+        "current_usage": {
+            "cpu": {
+                "mean": 0.7544532357100436,
+                "std": 1.1890921867845563,
+                "unit": "%"
+            },
+            "ram": {
+                "mean": 0.8615855720932705,
+                "std": 0.09042483693572448,
+                "unit": "GiB"
+            },
+            "disk": {
+                "used": 7.634210816,
+                "unit": "GB"
+            }
+        },
+        "enabled": true,
+        "in_maintenance": false,
+        "metadata": {
+            "rack": "RACK-AZ5",
+            "datacenter": "Lima"
+        }
+    }
+}
