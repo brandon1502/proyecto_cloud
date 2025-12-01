@@ -1,0 +1,9 @@
+{
+  "placement": {
+    "availability_zone": "AZ4",
+    "host": "compute-node-worker1",
+    "platform": "openstack",
+    "reason": "Host OpenStack en AZ AZ4 seleccionado con riesgo m\u00e1ximo 0.0000"
+  },
+  "success": true
+}

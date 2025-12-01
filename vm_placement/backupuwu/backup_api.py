@@ -1,0 +1,404 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+API Handler para el módulo de VM Placement PUCP
+Recibe solicitudes JSON, consulta workers disponibles y ejecuta placement
+"""
+
+from flask import Flask, request, jsonify
+from typing import Dict, List, Optional
+import requests
+from dataclasses import asdict
+
+# Importar las clases del módulo de placement
+from vm_placement import (
+    SliceRequest, HostState, PlacementDecision,
+    decide_vm_placement
+)
+
+app = Flask(__name__)
+
+# ========================================
+# CONFIGURACIÓN DE APIs EXTERNAS
+# ========================================
+
+# URL base para consultar estado de workers
+# Ajusta según tu infraestructura real
+# AJUSTAR HARDCODED
+WORKER_API_BASE = "http://localhost:8081/api/v1"
+
+# Endpoints específicos
+WORKERS_ENDPOINT = f"{WORKER_API_BASE}/workers"  # GET: lista todos los workers
+WORKER_DETAIL_ENDPOINT = f"{WORKER_API_BASE}/workers/{{worker_id}}"  # GET: detalle de un worker
+
+
+# ========================================
+# FUNCIONES AUXILIARES
+# ========================================
+
+def parse_slice_request(json_data: Dict) -> Optional[SliceRequest]:
+    """
+    Convierte el JSON recibido en un objeto SliceRequest
+    
+    Formato esperado del JSON:
+    {
+        "cpu": 4,
+        "ram_gb": 8.0,
+        "disk_gb": 50.0,
+        "zone": "AZ1",
+        "platform": "linux",  # opcional: "linux", "openstack" o null
+        "user_profile": "Estudiante",  # opcional
+        "technical_context": "Cloud / Web / Dev",  # opcional
+        "max_failure_prob": 0.01  # opcional
+    }
+    """
+    try:
+        # Validar campos requeridos
+        required_fields = ["cpu", "ram_gb", "disk_gb", "zone"]
+        for field in required_fields:
+            if field not in json_data:
+                raise ValueError(f"Campo requerido faltante: {field}")
+        
+        # Crear objeto SliceRequest con valores del JSON
+        slice_req = SliceRequest(
+            cpu=int(json_data["cpu"]),
+            ram_gb=float(json_data["ram_gb"]),
+            disk_gb=float(json_data["disk_gb"]),
+            zone=json_data["zone"],
+            platform=json_data.get("platform"),  # puede ser None
+            # si no existe el atributo te coloca por defecto ese Estudiante y el contexto
+            user_profile=json_data.get("user_profile", "Estudiante"),
+            technical_context=json_data.get("technical_context", "Virtualización general"),
+            max_failure_prob=float(json_data.get("max_failure_prob", 0.01))
+        )
+        
+        return slice_req
+    
+    except (ValueError, KeyError, TypeError) as e:
+        print(f"❌ Error parseando SliceRequest: {e}")
+        return None
+
+
+def fetch_workers_in_zone(zone: str) -> List[Dict]:
+    """
+    Consulta la API externa para obtener todos los workers en una zona específica
+    
+    Retorna lista de diccionarios con información de cada worker
+    """
+    try:
+        # Consultar todos los workers
+        response = requests.get(
+            WORKERS_ENDPOINT,
+            params={"zone": zone},  # filtrar por zona
+            timeout=5
+        )
+        
+        if response.status_code != 200:
+            print(f"⚠️ API de workers retornó código {response.status_code}")
+            return []
+        
+        workers_data = response.json()
+        
+        # Asumir que la API retorna: {"workers": [...]}
+        if isinstance(workers_data, dict) and "workers" in workers_data:
+            return workers_data["workers"]
+        elif isinstance(workers_data, list):
+            return workers_data
+        else:
+            print(f"⚠️ Formato inesperado de respuesta de API: {type(workers_data)}")
+            return []
+    
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error consultando API de workers: {e}")
+        return []
+
+
+def fetch_worker_details(worker_id: str) -> Optional[Dict]:
+    """
+    Consulta detalles completos de un worker específico
+    """
+    try:
+        url = WORKER_DETAIL_ENDPOINT.format(worker_id=worker_id)
+        response = requests.get(url, timeout=5)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"⚠️ No se pudo obtener detalle del worker {worker_id}")
+            return None
+    
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error consultando detalle del worker {worker_id}: {e}")
+        return None
+
+
+def parse_worker_to_hoststate(worker_data: Dict) -> Optional[HostState]:
+    """
+    Convierte los datos de un worker (desde la API) a un objeto HostState
+    
+    Formato esperado del worker_data:
+    {
+        "id": "worker-1",
+        "name": "compute-node-1",
+        "platform": "linux",  # "linux" o "openstack"
+        "zone": "AZ1",
+        "cpu_capacity": 32,
+        "ram_gb_capacity": 128.0,
+        "disk_gb_capacity": 1000.0,
+        "current_usage": {
+            "cpu": {"mean": 12.5, "std": 2.3},
+            "ram_gb": {"mean": 64.0, "std": 8.5},
+            "disk_gb_used": 450.0  # ← DISCO ES DETERMINISTA (solo valor usado)
+        },
+        "enabled": true,
+        "in_maintenance": false,
+        "metadata": {"rack": "A1", "datacenter": "Lima"}
+    }
+    """
+    try:
+        # Extraer capacidades
+        cpu_capacity = int(worker_data["cpu_capacity"])
+        ram_capacity = float(worker_data["ram_gb_capacity"])
+        disk_capacity = float(worker_data["disk_gb_capacity"])
+        
+        # Extraer consumo actual
+        # CPU y RAM son probabilísticos (mean y std)
+        # DISCO es determinista (solo usado)
+        current_usage = worker_data.get("current_usage", {})
+        
+        cpu_usage = current_usage.get("cpu", {"mean": 0, "std": 0})
+        ram_usage = current_usage.get("ram_gb", {"mean": 0, "std": 0})
+        
+        # Disco: puede venir como "disk_gb_used" o como "disk_gb" (por compatibilidad)
+        disk_used = current_usage.get("disk_gb_used")
+        if disk_used is None:
+            # Fallback: si viene como objeto con "mean", usar ese valor
+            disk_obj = current_usage.get("disk_gb", {})
+            if isinstance(disk_obj, dict):
+                disk_used = disk_obj.get("mean", 0)
+            else:
+                disk_used = disk_obj if disk_obj else 0
+        
+        # Crear objeto HostState
+        host = HostState(
+            name=worker_data.get("name", worker_data["id"]),
+            platform=worker_data["platform"],
+            zone=worker_data["zone"],
+            cpu_capacity=cpu_capacity,
+            ram_gb_capacity=ram_capacity,
+            disk_gb_capacity=disk_capacity,
+            mu_cpu=float(cpu_usage.get("mean", 0)),
+            sigma_cpu=float(cpu_usage.get("std", 0)),
+            mu_ram_gb=float(ram_usage.get("mean", 0)),
+            sigma_ram_gb=float(ram_usage.get("std", 0)),
+            disk_gb_used=float(disk_used),  # ← DISCO DETERMINISTA
+            enabled=worker_data.get("enabled", True),
+            in_maintenance=worker_data.get("in_maintenance", False),
+            metadata=worker_data.get("metadata", {})
+        )
+        
+        return host
+    
+    except (KeyError, ValueError, TypeError) as e:
+        print(f"❌ Error parseando worker a HostState: {e}")
+        return None
+
+
+def get_hosts_for_zone(zone: str) -> List[HostState]:
+    """
+    Obtiene todos los hosts disponibles en una zona específica
+    
+    1. Consulta la lista de workers en la zona
+    2. Para cada worker, obtiene sus detalles completos
+    3. Convierte cada worker a HostState
+    """
+    print(f"\n🔍 Consultando workers en zona: {zone}")
+    
+    # Obtener lista de workers en la zona
+    workers_basic = fetch_workers_in_zone(zone)
+    
+    if not workers_basic:
+        print(f"⚠️ No se encontraron workers en la zona {zone}")
+        return []
+    
+    print(f"✓ Encontrados {len(workers_basic)} workers en zona {zone}")
+    
+    # Obtener detalles de cada worker y convertir a HostState
+    hosts = []
+    
+    for worker_basic in workers_basic:
+        worker_id = worker_basic.get("id") or worker_basic.get("name")
+        
+        if not worker_id:
+            print(f"⚠️ Worker sin ID, saltando...")
+            continue
+        
+        # Obtener detalles completos
+        worker_detail = fetch_worker_details(worker_id)
+        
+        # VERIFICAR ESTE CASO:C
+        if not worker_detail:
+            # Si no hay detalles, usar datos básicos
+            worker_detail = worker_basic
+        
+        # Convertir a HostState
+        host = parse_worker_to_hoststate(worker_detail)
+        
+        if host:
+            hosts.append(host)
+            print(f"  ✓ {host.name} ({host.platform}) - CPU: {host.cpu_capacity}, RAM: {host.ram_gb_capacity}GB")
+        else:
+            print(f"  ❌ No se pudo parsear worker {worker_id}")
+    
+    print(f"\n✓ Total de hosts válidos: {len(hosts)}")
+    return hosts
+
+
+# ========================================
+# ENDPOINT PRINCIPAL DE LA API
+# ========================================
+
+@app.route('/api/v1/placement', methods=['POST'])
+def placement_endpoint():
+    """
+    Endpoint principal que recibe solicitud de placement y retorna decisión
+    
+    Request JSON:
+    {
+        "cpu": 4,
+        "ram_gb": 8.0,
+        "disk_gb": 50.0,
+        "zone": "AZ1",
+        "platform": "linux",
+        "user_profile": "Estudiante",
+        "technical_context": "Cloud / Web / Dev",
+        "max_failure_prob": 0.01
+    }
+    
+    Response JSON (éxito):
+    {
+        "success": true,
+        "placement": {
+            "host": "compute-node-1",
+            "platform": "linux",
+            "availability_zone": "AZ1",
+            "scheduler_hints": {},
+            "reason": "Host Linux seleccionado con riesgo máximo 0.0045"
+        }
+    }
+    
+    Response JSON (fallo):
+    {
+        "success": false,
+        "error": "No hay hosts disponibles que cumplan los requisitos"
+    }
+    """
+    
+    print("\n" + "="*70)
+    print("NUEVA SOLICITUD DE PLACEMENT")
+    print("="*70)
+    
+    try:
+        # 1. Parsear el JSON recibido
+        json_data = request.get_json()
+        
+        if not json_data:
+            return jsonify({
+                "success": False,
+                "error": "No se recibió JSON válido en el body"
+            }), 400
+        
+        print(f"📥 Solicitud recibida: {json_data}")
+        
+        # 2. Convertir a SliceRequest
+        slice_req = parse_slice_request(json_data)
+        
+        if not slice_req:
+            return jsonify({
+                "success": False,
+                "error": "Error parseando los parámetros de la solicitud"
+            }), 400
+        
+        print(f"\n✓ SliceRequest creado:")
+        print(f"  - CPU: {slice_req.cpu} cores")
+        print(f"  - RAM: {slice_req.ram_gb} GB")
+        print(f"  - Disco: {slice_req.disk_gb} GB")
+        print(f"  - Zona: {slice_req.zone}")
+        print(f"  - Plataforma: {slice_req.platform or 'auto'}")
+        print(f"  - Perfil: {slice_req.user_profile}")
+        print(f"  - Contexto: {slice_req.technical_context}")
+        
+        # 3. Obtener hosts disponibles en la zona solicitada
+        hosts = get_hosts_for_zone(slice_req.zone)
+        
+        if not hosts:
+            return jsonify({
+                "success": False,
+                "error": f"No hay workers disponibles en la zona {slice_req.zone}"
+            }), 404
+        
+        # 4. Ejecutar algoritmo de placement
+        print(f"\n🎯 Ejecutando algoritmo de placement...")
+        decision = decide_vm_placement(slice_req, hosts)
+        
+        # 5. Retornar resultado
+        if decision:
+            print(f"\n✅ PLACEMENT EXITOSO")
+            print(f"  Host seleccionado: {decision.host}")
+            print(f"  Plataforma: {decision.platform}")
+            print(f"  Zona: {decision.availability_zone}")
+            print(f"  Razón: {decision.reason}")
+            
+            return jsonify({
+                "success": True,
+                "placement": asdict(decision)
+            }), 200
+        
+        else:
+            print(f"\n❌ NO SE ENCONTRÓ HOST VIABLE")
+            return jsonify({
+                "success": False,
+                "error": "No hay hosts disponibles que cumplan los requisitos de riesgo"
+            }), 409
+    
+    except Exception as e:
+        print(f"\n❌ ERROR INTERNO: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            "success": False,
+            "error": f"Error interno del servidor: {str(e)}"
+        }), 500
+
+
+@app.route('/api/v1/health', methods=['GET'])
+def health_check():
+    """Endpoint simple para verificar que la API está funcionando"""
+    return jsonify({
+        "status": "healthy",
+        "service": "VM Placement API",
+        "version": "1.0"
+    }), 200
+
+
+# ========================================
+# EJECUCIÓN DEL SERVIDOR
+# ========================================
+
+if __name__ == '__main__':
+    print("="*70)
+    print("SERVIDOR DE VM PLACEMENT API")
+    print("="*70)
+    print("Endpoints disponibles:")
+    print("  POST /api/v1/placement  - Solicitar placement de VM")
+    print("  GET  /api/v1/health     - Health check")
+    print("="*70)
+    print("\n🚀 Iniciando servidor en http://localhost:5000")
+    
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=True
+    )

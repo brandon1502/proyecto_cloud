@@ -1,0 +1,4 @@
+{
+  "error": "No hay hosts disponibles que cumplan los requisitos de riesgo",
+  "success": false
+}
