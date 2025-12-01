@@ -1,0 +1,121 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # ========================================
+  # Prometheus mismo
+  # ========================================
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          environment: 'monitoring'
+          hostname: 'app-server'
+
+  # ========================================
+  # APP Server (10.20.12.26)
+  # ========================================
+  - job_name: 'app-server'
+    static_configs:
+      - targets: ['localhost:9100']
+        labels:
+          environment: 'app'
+          hostname: 'app-server'
+
+  # ========================================
+  # Node Exporter - Linux Domain
+  # ========================================
+  - job_name: 'nodes-linux'
+    static_configs:
+      - targets: ['192.168.201.1:9100']
+        labels:
+          environment: 'linux'
+          hostname: 'server1'
+      
+      - targets: ['192.168.201.2:9100']
+        labels:
+          environment: 'linux'
+          hostname: 'server2'
+      
+      - targets: ['192.168.201.3:9100']
+        labels:
+          environment: 'linux'
+          hostname: 'server3'
+      
+      - targets: ['192.168.201.4:9100']
+        labels:
+          environment: 'linux'
+          hostname: 'server4'
+
+  # ========================================
+  # Node Exporter - OpenStack Domain
+  # ========================================
+  - job_name: 'nodes-openstack'
+    static_configs:
+      - targets: ['192.168.202.1:9100']
+        labels:
+          environment: 'openstack'
+          hostname: 'headnode'
+      
+      - targets: ['192.168.202.2:9100']
+        labels:
+          environment: 'openstack'
+          hostname: 'worker1'
+      
+      - targets: ['192.168.202.3:9100']
+        labels:
+          environment: 'openstack'
+          hostname: 'worker2'
+      
+      - targets: ['192.168.202.4:9100']
+        labels:
+          environment: 'openstack'
+          hostname: 'worker3'
+
+  # ========================================
+  # ICMP Ping Check - Linux Servers
+  # ========================================
+  - job_name: 'blackbox_ping_linux'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - '192.168.201.1'
+        - '192.168.201.2'
+        - '192.168.201.3'
+        - '192.168.201.4'
+        labels:
+          environment: 'linux'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'localhost:9115'
+
+  # ========================================
+  # ICMP Ping Check - OpenStack Nodes
+  # ========================================
+  - job_name: 'blackbox_ping_openstack'
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - '192.168.202.1'
+        - '192.168.202.2'
+        - '192.168.202.3'
+        - '192.168.202.4'
+        labels:
+          environment: 'openstack'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'localhost:9115'
